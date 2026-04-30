@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import api from '../../api/axios';
-import { TrendingUp, CalendarDays, DollarSign } from 'lucide-react';
+import { TrendingUp, CalendarDays, DollarSign, FileText, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import swal from '../../lib/swal';
+import PdfViewerModal from '../../components/ui/PdfViewerModal';
 import {
   useReactTable,
   getCoreRowModel,
@@ -20,6 +21,12 @@ export default function CierreCaja() {
   const [datos, setDatos] = useState([]);
   const [cargando, setCargando] = useState(false);
   const [sorting, setSorting] = useState([]);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [mostrarPdf, setMostrarPdf] = useState(false);
+  
+  // --- NUEVOS ESTADOS PARA SUNAT ---
+  const [estadoEnvio, setEstadoEnvio] = useState(null);
+  const [enviando, setEnviando] = useState(false);
 
   const columns = useMemo(
     () => [
@@ -73,11 +80,58 @@ export default function CierreCaja() {
     }
   };
 
+  // --- NUEVA FUNCIÓN: cargar estado SUNAT ---
+  const cargarEstadoEnvio = async (fechaConsulta) => {
+    try {
+      const res = await api.get('/Reporte/cierre-caja/estado-envio', {
+        params: { fecha: fechaConsulta },
+      });
+      setEstadoEnvio(res.data);
+    } catch (error) {
+      console.error('Error al cargar estado de envío:', error);
+    }
+  };
+
+  // Cargar datos y estado SUNAT cuando cambia la fecha
   useEffect(() => {
     cargarCierre(fecha);
+    cargarEstadoEnvio(fecha);
   }, [fecha]);
 
   const totalGeneral = datos.reduce((sum, item) => sum + (item.ingresos || 0), 0);
+
+  const generarPdf = () => {
+    const url = `${import.meta.env.VITE_API_URL}/Pdf/CierreCaja?fecha=${fecha}`;
+    setPdfUrl(url);
+    setMostrarPdf(true);
+  };
+
+  // --- NUEVA FUNCIÓN: simular envío a SUNAT ---
+  const enviarASunat = async () => {
+    const confirmacion = await swal.fire({
+      title: '¿Simular envío a SUNAT?',
+      text: 'Se marcará el cierre de caja como enviado.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, enviar',
+      cancelButtonText: 'Cancelar',
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
+    setEnviando(true);
+    try {
+      await api.post('/Reporte/cierre-caja/enviar', null, {
+        params: { fecha },
+      });
+      swal.fire('Enviado', 'El cierre de caja fue marcado como enviado a SUNAT.', 'success');
+      cargarEstadoEnvio(fecha);
+    } catch (error) {
+      swal.fire('Error', 'No se pudo simular el envío', 'error');
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   return (
     <div>
@@ -118,7 +172,10 @@ export default function CierreCaja() {
             <div className="flex items-center">
               <button
                 className="btn btn-primary"
-                onClick={() => cargarCierre(fecha)}
+                onClick={() => {
+                  cargarCierre(fecha);
+                  cargarEstadoEnvio(fecha);
+                }}
                 disabled={cargando}
               >
                 {cargando ? 'Cargando...' : 'Consultar'}
@@ -174,16 +231,59 @@ export default function CierreCaja() {
               </tbody>
             </table>
           </div>
+
+          {/* Totales y acciones */}
           {datos.length > 0 && (
-            <div className="mt-4 text-right">
-              <p className="text-lg font-bold">
-                <DollarSign size={20} className="inline mr-1" />
-                Total General: S/ {totalGeneral.toFixed(2)}
-              </p>
+            <div className="mt-4 space-y-4">
+              <div className="text-right">
+                <p className="text-lg font-bold">
+                  <DollarSign size={20} className="inline mr-1" />
+                  Total General: S/ {totalGeneral.toFixed(2)}
+                </p>
+              </div>
+
+              {/* Estado SUNAT y acciones */}
+              <div className="flex flex-col sm:flex-row items-end sm:items-center justify-between gap-4">
+                {/* Estado de envío */}
+                {estadoEnvio && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold">Estado SUNAT:</span>
+                    <span className={`badge ${estadoEnvio.idEstadoSunat === 2 ? 'badge-info' : estadoEnvio.idEstadoSunat === 3 ? 'badge-success' : 'badge-warning'}`}>
+                      {estadoEnvio.nombreEstadoSunat ?? 'Pendiente'}
+                    </span>
+                    {estadoEnvio.fechaEnvio && (
+                      <span className="text-xs text-gray-500">
+                        ({new Date(estadoEnvio.fechaEnvio).toLocaleString('es-PE')})
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Botones */}
+                <div className="flex gap-2">
+                  {estadoEnvio && estadoEnvio.idEstadoSunat === 1 && (
+                    <button
+                      className="btn btn-sm btn-info"
+                      onClick={enviarASunat}
+                      disabled={enviando}
+                    >
+                      {enviando ? 'Enviando...' : <><Send size={16} className="mr-1" /> Enviar a SUNAT</>}
+                    </button>
+                  )}
+                  <button className="btn btn-primary btn-sm" onClick={generarPdf}>
+                    <FileText size={16} className="mr-1" /> Generar PDF
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Modal de PDF */}
+      {mostrarPdf && (
+        <PdfViewerModal pdfUrl={pdfUrl} onClose={() => { setMostrarPdf(false); setPdfUrl(null); }} />
+      )}
     </div>
   );
 }
