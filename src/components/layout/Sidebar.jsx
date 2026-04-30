@@ -88,7 +88,7 @@ export default function Sidebar() {
     return (
         <aside className="w-64 bg-base-100 min-h-screen p-4 shadow-xl">
             <div className="mb-6 px-2">
-                <h1 className="text-2xl font-bold text-primary">🏨 La Rica Noche</h1>
+                <h1 className="text-2xl font-bold text-primary">La Rica Noche</h1>
                 <p className="text-xs text-gray-500 mt-1">{user?.nombreRol}</p>
             </div>
             <ul className="menu menu-md gap-1">
