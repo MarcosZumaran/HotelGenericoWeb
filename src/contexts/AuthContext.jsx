@@ -4,34 +4,41 @@ import api from '../api/axios';
 const AuthContext = createContext(undefined);
 
 export function AuthProvider({ children }) {
-    const [user, setUser] = useState(null);
-    const [token, setToken] = useState(localStorage.getItem('token'));
-    const [isLoading, setIsLoading] = useState(true);
+    // Intentamos recuperar el token y los datos del usuario desde localStorage al montar el componente
+    const [token, setToken] = useState(() => localStorage.getItem('token'));
+    const [user, setUser] = useState(() => {
+        const storedUser = localStorage.getItem('user');
+        return storedUser ? JSON.parse(storedUser) : null;
+    });
+    const [isLoading, setIsLoading] = useState(false);
 
+    // Sincronizamos el token con localStorage cada vez que cambie
     useEffect(() => {
         if (token) {
-            api.get('/Usuario/me')
-                .then(res => setUser(res.data))
-                .catch(() => {
-                    localStorage.removeItem('token');
-                    setToken(null);
-                })
-                .finally(() => setIsLoading(false));
+            localStorage.setItem('token', token);
         } else {
-            setIsLoading(false);
+            localStorage.removeItem('token');
         }
     }, [token]);
+
+    // Sincronizamos el token con localStorage cada vez que cambie y sincronizamos el usuario
+    useEffect(() => {
+        if (user) {
+            localStorage.setItem('user', JSON.stringify(user));
+        } else {
+            localStorage.removeItem('user');
+        }
+    }, [user]);
 
     const login = async (username, password) => {
         const res = await api.post('/Usuario/login', { username, password });
         const { token: jwt, usuario } = res.data;
-        localStorage.setItem('token', jwt);
         setToken(jwt);
         setUser(usuario);
+        return usuario; // Devolvemos el usuario para que el Login pueda redirigir según el rol
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
         setToken(null);
         setUser(null);
     };

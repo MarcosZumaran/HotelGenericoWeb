@@ -327,6 +327,9 @@ export default function CheckIn() {
                             field.onChange('');
                           }
                         }}
+                        captionLayout="dropdown"
+                        startMonth={new Date(1960, 0)}
+                        endMonth={new Date(2100, 11)}
                         className="bg-base-100 p-4 rounded-lg shadow-lg"
                       />
                     </div>
@@ -359,13 +362,8 @@ export default function CheckIn() {
                   </span>
                 )}
               </div>
-
-              <LoadingButton
-                type="submit"
-                isLoading={isLoading}
-                className="w-full"
-              >
-                Entrar
+              <LoadingButton isLoading={cargando} className="w-full">
+                Confirmar Check‑In
               </LoadingButton>
             </div>
           </div>

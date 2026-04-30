@@ -455,6 +455,9 @@ export default function ClienteList() {
                             field.onChange('');
                           }
                         }}
+                        captionLayout="dropdown"
+                        startMonth={new Date(1960, 0)}
+                        endMonth={new Date(2100, 11)}
                         className="bg-base-100 p-4 rounded-lg shadow-lg"
                       />
                     </div>
@@ -473,10 +476,10 @@ export default function ClienteList() {
                 </button>
                 <LoadingButton
                   type="submit"
-                  isLoading={isLoading}
-                  className="w-full"
+                  isLoading={isSubmitting}
+                  className="btn-primary"
                 >
-                  Entrar
+                  {editando ? 'Actualizar' : 'Crear'}
                 </LoadingButton>
               </div>
             </form>

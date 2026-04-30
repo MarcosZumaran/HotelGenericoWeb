@@ -2,19 +2,71 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
     LayoutDashboard, Bed, Users, LogIn, Receipt,
-    FileText, TrendingUp, DoorOpen, Package
+    FileText, TrendingUp, DoorOpen, Package, ShoppingCart
 } from 'lucide-react';
 
 const menuItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Administrador', 'Recepcionista'] },
-    { path: '/habitaciones', label: 'Habitaciones', icon: Bed, roles: ['Administrador', 'Recepcionista'] },
-    { path: '/clientes', label: 'Clientes', icon: Users, roles: ['Administrador', 'Recepcionista'] },
-    { path: '/checkin', label: 'Check-In', icon: LogIn, roles: ['Administrador', 'Recepcionista'] },
-    { path: '/checkout', label: 'Check-Out', icon: DoorOpen, roles: ['Administrador', 'Recepcionista'] },
-    { path: '/productos', label: 'Productos', icon: Package, roles: ['Administrador'] },
-    { path: '/comprobantes', label: 'Comprobantes', icon: Receipt, roles: ['Administrador'] },
-    { path: '/reportes/cierre-caja', label: 'Cierre de Caja', icon: TrendingUp, roles: ['Administrador'] },
-    { path: '/reportes/estado-habitaciones', label: 'Estado de Hab.', icon: FileText, roles: ['Administrador', 'Recepcionista'] },
+    {
+        path: '/dashboard',
+        label: 'Dashboard',
+        icon: LayoutDashboard,
+        roles: ['Administrador', 'Recepcionista', 'Limpieza']
+    },
+    {
+        path: '/habitaciones',
+        label: 'Habitaciones',
+        icon: Bed,
+        roles: ['Administrador', 'Recepcionista']
+    },
+    {
+        path: '/clientes',
+        label: 'Clientes',
+        icon: Users,
+        roles: ['Administrador', 'Recepcionista']
+    },
+    {
+        path: '/checkin',
+        label: 'Check-In',
+        icon: LogIn,
+        roles: ['Administrador', 'Recepcionista']
+    },
+    {
+        path: '/checkout',
+        label: 'Check-Out',
+        icon: DoorOpen,
+        roles: ['Administrador', 'Recepcionista']
+    },
+    {
+        path: '/productos',
+        label: 'Productos',
+        icon: Package,
+        roles: ['Administrador']
+    },
+    {
+        path: '/comprobantes',
+        label: 'Comprobantes',
+        icon: Receipt,
+        roles: ['Administrador']
+    },
+    {
+        path: '/reportes/cierre-caja',
+        label: 'Cierre de Caja',
+        icon: TrendingUp,
+        roles: ['Administrador']
+    },
+    {
+        path: '/reportes/estado-habitaciones',
+        label: 'Estado de Hab.',
+        icon: FileText,
+        roles: ['Administrador', 'Recepcionista', 'Limpieza']  // ← agregado
+    },
+    { 
+        path: '/ventas', 
+        label: 'Ventas', 
+        icon: ShoppingCart, 
+        roles: ['Administrador', 'Recepcionista'] 
+    },
+
 ];
 
 export default function Sidebar() {

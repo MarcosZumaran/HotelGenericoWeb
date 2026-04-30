@@ -88,6 +88,10 @@ export default function HabitacionList() {
       descripcion: data.descripcion || null,
     };
 
+    if (editando) {
+      payload.idEstado = editando.idEstado;
+    }
+
     try {
       if (editando) {
         await api.put(`/Habitacion/${editando.idHabitacion}`, payload);
@@ -165,13 +169,16 @@ export default function HabitacionList() {
   };
 
   const botonesEstado = (h) => {
-    if (!esAdmin) return null;
+    const esLimpieza = user?.nombreRol === 'Limpieza';
+
+    // Si está cargando el cambio de estado, mostramos spinner
     if (cambiandoEstado === h.idHabitacion) {
       return <span className="loading loading-spinner loading-xs"></span>;
     }
 
     switch (h.idEstado) {
-      case 1: // Disponible
+      case 1: // Disponible → Mantenimiento
+        if (!esAdmin) return null;
         return (
           <button
             className="btn btn-ghost btn-xs text-warning"
@@ -181,7 +188,9 @@ export default function HabitacionList() {
             <Wrench size={16} />
           </button>
         );
-      case 3: // Limpieza
+
+      case 3: // Limpieza → Finalizar limpieza
+        if (!esAdmin && !esLimpieza) return null;
         return (
           <button
             className="btn btn-ghost btn-xs text-success"
@@ -191,7 +200,9 @@ export default function HabitacionList() {
             <CheckCircle size={16} />
           </button>
         );
-      case 4: // Mantenimiento
+
+      case 4: // Mantenimiento → Habilitar
+        if (!esAdmin) return null;
         return (
           <button
             className="btn btn-ghost btn-xs text-primary"
@@ -201,7 +212,8 @@ export default function HabitacionList() {
             <RotateCcw size={16} />
           </button>
         );
-      default: // Ocupada u otro — sin acción manual
+
+      default:
         return null;
     }
   };
@@ -399,12 +411,8 @@ export default function HabitacionList() {
                 >
                   Cancelar
                 </button>
-                <LoadingButton
-                  type="submit"
-                  isLoading={isLoading}
-                  className="w-full"
-                >
-                  Entrar
+                <LoadingButton type="submit" isLoading={isSubmitting} className="btn-primary">
+                  {editando ? 'Actualizar' : 'Crear'}
                 </LoadingButton>
               </div>
             </form>

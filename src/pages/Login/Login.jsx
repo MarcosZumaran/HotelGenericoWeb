@@ -24,14 +24,20 @@ export default function Login() {
     event.preventDefault();
     setIsLoading(true);
     try {
-      await login(data.username, data.password);
+      const usuario = await login(data.username, data.password);
+
       swal.fire({
         icon: 'success',
         title: '¡Bienvenido!',
         showConfirmButton: false,
         timer: 1500,
       });
-      navigate('/dashboard');
+
+      if (usuario.nombreRol === 'Limpieza') {
+        navigate('/reportes/estado-habitaciones');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
       const mensaje =
         error.response?.status === 401

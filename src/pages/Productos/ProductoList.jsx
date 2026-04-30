@@ -354,10 +354,10 @@ export default function ProductoList() {
                 </button>
                 <LoadingButton
                   type="submit"
-                  isLoading={isLoading}
-                  className="w-full"
+                  isLoading={isSubmitting}
+                  className="btn-primary"
                 >
-                  Entrar
+                  {editando ? 'Actualizar' : 'Crear'}
                 </LoadingButton>
               </div>
             </form>

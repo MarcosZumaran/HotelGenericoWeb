@@ -68,6 +68,9 @@ export default function CierreCaja() {
                       setFecha('');
                     }
                   }}
+                  captionLayout="dropdown"
+                  startMonth={new Date(1960, 0)}
+                  endMonth={new Date(2100, 11)}
                   className="bg-base-100 p-4 rounded-lg shadow-lg w-fit"
                 />
               </div>

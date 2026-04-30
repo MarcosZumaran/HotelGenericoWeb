@@ -12,6 +12,7 @@ import ProductoList from './pages/Productos/ProductoList';
 import ComprobanteList from './pages/Comprobantes/ComprobanteList';
 import CierreCaja from './pages/Reportes/CierreCaja';
 import EstadoHabitaciones from './pages/Reportes/EstadoHabitaciones';
+import VentaList from './pages/Ventas/VentaList';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
               <Route path="/checkin" element={<CheckIn />} />
               <Route path="/checkout" element={<CheckOut />} />
               <Route path="/productos" element={<ProductoList />} />
+              <Route path="/ventas" element={<VentaList />} />
               <Route path="/comprobantes" element={<ComprobanteList />} />
               <Route path="/reportes/cierre-caja" element={<CierreCaja />} />
               <Route path="/reportes/estado-habitaciones" element={<EstadoHabitaciones />} />
