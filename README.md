@@ -131,7 +131,7 @@ El backend del proyecto está orientado a la gestión del hotel y trabaja con te
 
 ## Nota
 
-Este repositorio forma parte de un proyecto en desarrollo, por lo que su estructura y funcionalidades pueden seguir cambiando.
+Este repositorio forma parte de un proyecto en desarrollo, por lo que su estructura y funcionalidades pueden seguir cambiando. Ademas esto fue creado con fines de practicas institucionales y no tiene fines comerciales. 
 
 ---
 
