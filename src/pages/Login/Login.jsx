@@ -70,7 +70,7 @@ export default function Login() {
               </label>
               <input
                 type="text"
-                placeholder="marcosz"
+                placeholder="Nombre de usuario"
                 className={`input input-bordered ${errors.username ? 'input-error' : ''}`}
                 {...register('username')}
                 autoFocus
