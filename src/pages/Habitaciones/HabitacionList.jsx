@@ -94,7 +94,7 @@ export default function HabitacionList() {
 
     try {
       if (editando) {
-        await api.put(`/Habitacion/${editando.idHabitacion}`, payload);
+        await api.patch(`/Habitacion/${editando.idHabitacion}`, payload);
         swal.fire('Actualizado', 'La habitación fue actualizada', 'success');
       } else {
         await api.post('/Habitacion', payload);
@@ -147,7 +147,7 @@ export default function HabitacionList() {
 
     setCambiandoEstado(idHabitacion);
     try {
-      await api.put(`/Habitacion/${idHabitacion}`, { idEstado: nuevoIdEstado });
+      await api.patch(`/Habitacion/${idHabitacion}`, { idEstado: nuevoIdEstado });
       swal.fire('Éxito', `Habitación actualizada: ${accion}`, 'success');
       cargarDatos();
     } catch (error) {
