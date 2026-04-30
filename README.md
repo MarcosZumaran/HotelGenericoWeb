@@ -1,15 +1,16 @@
 # La Rica Noche Web
 
-Interfaz web del sistema **La Rica Noche**, un proyecto para la gestión de un pequeño alojamiento.  
-Este frontend se conecta con la API del proyecto principal para manejar el flujo completo del sistema.
+Interfaz web del sistema **La Rica Noche**, desarrollada para consumir la API del proyecto y centralizar la gestión visual del alojamiento.
 
-**Repositorio del backend:** https://github.com/MarcosZumaran/LaRicaNoche.Api
+Repositorio del backend: https://github.com/MarcosZumaran/LaRicaNoche.Api
 
 ---
 
 ## Descripción
 
-Este proyecto está construido con **React + Vite** y organiza la aplicación en módulos para trabajar con:
+Este frontend está construido con **React + Vite** y está organizado por módulos para cubrir las funciones principales del sistema.
+
+La aplicación permite trabajar con:
 
 - autenticación e ingreso al sistema
 - panel principal
@@ -21,34 +22,50 @@ Este proyecto está construido con **React + Vite** y organiza la aplicación en
 - reportes
 - ventas
 
-La estructura del frontend está pensada para consumir la API y centralizar la lógica de navegación, protección de rutas y manejo de estado.
+La estructura del proyecto está pensada para mantener una navegación clara, separar responsabilidades y facilitar el consumo de la API.
 
 ---
 
-## Tecnologías usadas
+## Tecnologías utilizadas
 
-- React
-- Vite
-- React Router
-- Axios
-- React Hook Form
-- Zod
-- TanStack Table
-- React Hot Toast
-- SweetAlert2
-- Tailwind CSS
-- DaisyUI
-- Lucide React
+| Tecnología | Propósito |
+|---|---|
+| React | Interfaz de usuario |
+| Vite | Entorno de desarrollo y compilación |
+| React Router | Navegación entre vistas |
+| Axios | Consumo de servicios HTTP |
+| React Hook Form | Manejo de formularios |
+| Zod | Validación de datos |
+| TanStack Table | Tablas y listados |
+| React Hot Toast | Notificaciones |
+| SweetAlert2 | Alertas y confirmaciones |
+| Tailwind CSS | Estilos utilitarios |
+| DaisyUI | Componentes visuales |
+| Lucide React | Iconografía |
+
+---
+
+## Características
+
+- Inicio de sesión
+- Navegación por módulos
+- Gestión visual de entidades del sistema
+- Consumo centralizado de la API
+- Validación de formularios
+- Tablas para listados y administración de datos
+- Mensajes visuales para acciones y errores
+
+---
+
+## Requisitos previos
+
+- Node.js
+- npm
+- Backend del sistema ejecutándose correctamente
 
 ---
 
 ## Instalación
-
-### Requisitos
-- Node.js
-- npm
-
-### Pasos
 
 ```bash
 git clone https://github.com/MarcosZumaran/LaRicaNoche.Web.git
@@ -56,29 +73,39 @@ cd LaRicaNoche.Web
 npm install
 ```
 
-### Variables de entorno
+---
 
-Crea un archivo `.env` en la raíz del proyecto usando como base el ejemplo:
+## Configuración
 
-```bash
-VITE_API_URL=https://localhost:1234/api
+Crea un archivo `.env` en la raíz del proyecto.
+
+Ejemplo:
+
+```env
+VITE_API_URL=https://localhost:5001/api
 ```
 
-> Ajusta la URL según la dirección donde esté corriendo tu backend.
+Ajusta la URL según la dirección real del backend.
 
-### Ejecutar en desarrollo
+---
+
+## Ejecución en desarrollo
 
 ```bash
 npm run dev
 ```
 
-### Compilar para producción
+---
+
+## Compilación para producción
 
 ```bash
 npm run build
 ```
 
-### Previsualizar la build
+---
+
+## Previsualización de la compilación
 
 ```bash
 npm run preview
@@ -106,38 +133,30 @@ src/
 
 ## Relación con el backend
 
-El frontend depende de la API del backend para obtener y enviar información del sistema.
+Este frontend depende de la API para obtener y registrar información del sistema.
 
-**Backend:**  
+Backend del proyecto:  
 https://github.com/MarcosZumaran/LaRicaNoche.Api
 
-El backend del proyecto está orientado a la gestión del hotel y trabaja con tecnologías como ASP.NET Core Web API, Entity Framework Core, SQL Server, Mapster y NLua.
+Flujo general:
+
+```text
+Usuario -> Frontend -> API -> Base de datos
+```
 
 ---
 
-## Funcionalidades principales
+## Nota importante
 
-- Inicio de sesión
-- Dashboard general
-- Gestión de habitaciones
-- Gestión de clientes
-- Registro de estancias
-- Gestión de productos
-- Emisión y consulta de comprobantes
-- Reportes y cierres
-- Ventas e historial
+> Este proyecto fue creado con fines de práctica institucional y no tiene fines comerciales.
 
----
-
-## Nota
-
-Este repositorio forma parte de un proyecto en desarrollo, por lo que su estructura y funcionalidades pueden seguir cambiando. Ademas esto fue creado con fines de practicas institucionales y no tiene fines comerciales. 
+> El sistema puede seguir evolucionando, por lo que la estructura y las funcionalidades pueden cambiar con el tiempo.
 
 ---
 
 ## Autor
 
-**MarcosZumaran**
+MarcosZumaran
 
-Repositorio del frontend:  
+Repositorio:  
 https://github.com/MarcosZumaran/LaRicaNoche.Web
