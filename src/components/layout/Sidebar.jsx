@@ -16,7 +16,7 @@ const menuItems = [
         path: '/habitaciones',
         label: 'Habitaciones',
         icon: Bed,
-        roles: ['Administrador', 'Recepcionista']
+        roles: ['Administrador', 'Recepcionista', 'Limpieza']
     },
     {
         path: '/clientes',

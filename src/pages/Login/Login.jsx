@@ -34,7 +34,7 @@ export default function Login() {
       });
 
       if (usuario.nombreRol === 'Limpieza') {
-        navigate('/reportes/estado-habitaciones');
+        navigate('/habitaciones');
       } else {
         navigate('/dashboard');
       }
