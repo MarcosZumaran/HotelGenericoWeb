@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/axios';
-import Swal from 'sweetalert2';
 import { Receipt, Search, Eye, SendHorizontal } from 'lucide-react';
+import swal from '../../lib/swal';
 
 export default function ComprobanteList() {
   const { user } = useAuth();
@@ -17,7 +17,7 @@ export default function ComprobanteList() {
       const res = await api.get('/Comprobante');
       setComprobantes(res.data);
     } catch (error) {
-      Swal.fire('Error', 'No se pudieron cargar los comprobantes', 'error');
+      swal.fire('Error', 'No se pudieron cargar los comprobantes', 'error');
     } finally {
       setCargando(false);
     }
@@ -32,7 +32,7 @@ export default function ComprobanteList() {
     try {
       const res = await api.get(`/Comprobante/${id}`);
       const c = res.data;
-      Swal.fire({
+      swal.fire({
         title: `Comprobante ${c.serie}-${c.correlativo}`,
         html: `
           <div class="text-left space-y-2">
@@ -50,12 +50,12 @@ export default function ComprobanteList() {
         confirmButtonText: 'Cerrar',
       });
     } catch (error) {
-      Swal.fire('Error', 'No se pudo cargar el detalle del comprobante', 'error');
+      swal.fire('Error', 'No se pudo cargar el detalle del comprobante', 'error');
     }
   };
 
   const marcarEnviado = async (id) => {
-    const confirmacion = await Swal.fire({
+    const confirmacion = await swal.fire({
       title: '¿Marcar como enviado a SUNAT?',
       text: 'Simulá la confirmación de envío electrónico.',
       icon: 'question',
@@ -71,10 +71,10 @@ export default function ComprobanteList() {
       await api.post(`/Comprobante/${id}/enviar`, '"hash_simulado"', {
         headers: { 'Content-Type': 'application/json' },
       });
-      Swal.fire('Enviado', 'Comprobante marcado como enviado a SUNAT.', 'success');
+      swal.fire('Enviado', 'Comprobante marcado como enviado a SUNAT.', 'success');
       cargarComprobantes();
     } catch (error) {
-      Swal.fire('Error', 'No se pudo actualizar el estado del comprobante', 'error');
+      swal.fire('Error', 'No se pudo actualizar el estado del comprobante', 'error');
     } finally {
       setEnviandoId(null);
     }

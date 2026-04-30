@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { format } from 'date-fns';
+import { DayPicker } from 'react-day-picker';
 import { checkinSchema } from './checkinSchema';
 import api from '../../api/axios';
-import Swal from 'sweetalert2';
 import { UserPlus, Bed, Calendar, CreditCard, Search, Hash, Phone } from 'lucide-react';
+import swal from '../../lib/swal';
+import LoadingButton from '../../components/ui/LoadingButton';
 
 export default function CheckIn() {
   const [habitaciones, setHabitaciones] = useState([]);
@@ -18,6 +21,7 @@ export default function CheckIn() {
     reset,
     watch,
     setValue,
+    control,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(checkinSchema),
@@ -34,7 +38,7 @@ export default function CheckIn() {
   useEffect(() => {
     const cargarHabitaciones = async () => {
       try {
-        const res = await api.get('/Habitacion'); // Endpoint que incluye idHabitacion
+        const res = await api.get('/Habitacion');
         const disponibles = res.data.filter((h) => h.nombreEstado === 'Disponible');
         setHabitaciones(disponibles);
       } catch (error) {
@@ -46,7 +50,7 @@ export default function CheckIn() {
 
   const buscarCliente = async () => {
     if (!buscarDocumento.trim()) {
-      Swal.fire('Atención', 'Ingresá un número de documento', 'warning');
+      swal.fire('Atención', 'Ingresá un número de documento', 'warning');
       return;
     }
     try {
@@ -55,13 +59,13 @@ export default function CheckIn() {
         setValue('nombres', res.data.nombres);
         setValue('apellidos', res.data.apellidos);
         setValue('telefono', res.data.telefono ?? '');
-        Swal.fire('Cliente encontrado', '', 'success');
+        swal.fire('Cliente encontrado', '', 'success');
       }
     } catch (error) {
       if (error.response?.status === 404) {
-        Swal.fire('Nuevo cliente', 'Cliente no encontrado, completá los datos', 'info');
+        swal.fire('Nuevo cliente', 'Cliente no encontrado, completá los datos', 'info');
       } else {
-        Swal.fire('Error', 'Error al buscar cliente', 'error');
+        swal.fire('Error', 'Error al buscar cliente', 'error');
       }
     }
   };
@@ -88,7 +92,7 @@ export default function CheckIn() {
     setCargando(true);
     try {
       const res = await api.post('/Estancia/checkin', data);
-      Swal.fire({
+      swal.fire({
         icon: 'success',
         title: '¡Check‑In exitoso!',
         html: `
@@ -109,7 +113,7 @@ export default function CheckIn() {
     } catch (error) {
       const mensaje =
         error.response?.data?.mensaje || 'Error al realizar el Check‑In';
-      Swal.fire('Error', mensaje, 'error');
+      swal.fire('Error', mensaje, 'error');
     } finally {
       setCargando(false);
     }
@@ -308,13 +312,28 @@ export default function CheckIn() {
                 <label className="label">
                   <span className="label-text">Fecha de Check‑Out prevista</span>
                 </label>
-                <input
-                  type="date"
-                  className={`input input-bordered ${errors.fechaCheckoutPrevista ? 'input-error' : ''}`}
-                  {...register('fechaCheckoutPrevista')}
+                <Controller
+                  name="fechaCheckoutPrevista"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="flex justify-center">
+                      <DayPicker
+                        mode="single"
+                        selected={field.value ? new Date(field.value + 'T00:00:00') : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            field.onChange(format(date, 'yyyy-MM-dd'));
+                          } else {
+                            field.onChange('');
+                          }
+                        }}
+                        className="bg-base-100 p-4 rounded-lg shadow-lg"
+                      />
+                    </div>
+                  )}
                 />
                 {errors.fechaCheckoutPrevista && (
-                  <span className="label-text-alt text-error">
+                  <span className="label-text-alt text-error mt-1 block">
                     {errors.fechaCheckoutPrevista.message}
                   </span>
                 )}
@@ -341,13 +360,13 @@ export default function CheckIn() {
                 )}
               </div>
 
-              <button
+              <LoadingButton
                 type="submit"
-                className={`btn btn-primary w-full ${cargando ? 'loading' : ''}`}
-                disabled={cargando}
+                isLoading={isLoading}
+                className="w-full"
               >
-                {cargando ? 'Procesando...' : 'Confirmar Check‑In'}
-              </button>
+                Entrar
+              </LoadingButton>
             </div>
           </div>
         </div>

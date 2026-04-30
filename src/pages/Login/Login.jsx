@@ -4,7 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { loginSchema } from './loginSchema';
-import Swal from 'sweetalert2';
+import swal from '../../lib/swal';
+import LoadingButton from '../../components/ui/LoadingButton';
 
 export default function Login() {
   const { login } = useAuth();
@@ -19,11 +20,12 @@ export default function Login() {
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = async (data) => {
+  const onSubmit = async (data, event) => {
+    event.preventDefault();
     setIsLoading(true);
     try {
       await login(data.username, data.password);
-      Swal.fire({
+      swal.fire({
         icon: 'success',
         title: '¡Bienvenido!',
         showConfirmButton: false,
@@ -35,7 +37,7 @@ export default function Login() {
         error.response?.status === 401
           ? 'Usuario o contraseña incorrectos'
           : 'Error al conectar con el servidor';
-      Swal.fire({
+      swal.fire({
         icon: 'error',
         title: 'Error',
         text: mensaje,
@@ -93,13 +95,13 @@ export default function Login() {
             </div>
 
             {/* Submit */}
-            <button
+            <LoadingButton
               type="submit"
-              className={`btn btn-primary w-full ${isLoading ? 'loading' : ''}`}
-              disabled={isLoading}
+              isLoading={isLoading}
+              className="w-full"
             >
-              {isLoading ? 'Entrando...' : 'Entrar'}
-            </button>
+              Entrar
+            </LoadingButton>
           </form>
         </div>
       </div>

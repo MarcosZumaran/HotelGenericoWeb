@@ -4,8 +4,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { clienteSchema } from './clienteSchema';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/axios';
-import Swal from 'sweetalert2';
+import { Controller } from 'react-hook-form';
+import { format } from 'date-fns';
+import { DayPicker } from 'react-day-picker';
 import { Plus, Edit, Trash2, Search, User, Hash, Phone, Mail } from 'lucide-react';
+import swal from '../../lib/swal';
+import LoadingButton from '../../components/ui/LoadingButton';
 
 export default function ClienteList() {
   const { user } = useAuth();
@@ -24,6 +28,7 @@ export default function ClienteList() {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(clienteSchema),
@@ -34,7 +39,7 @@ export default function ClienteList() {
       const res = await api.get('/Cliente');
       setClientes(res.data);
     } catch (error) {
-      Swal.fire('Error', 'No se pudieron cargar los clientes', 'error');
+      swal.fire('Error', 'No se pudieron cargar los clientes', 'error');
     } finally {
       setCargando(false);
     }
@@ -58,9 +63,9 @@ export default function ClienteList() {
     } catch (error) {
       if (error.response?.status === 404) {
         setClientes([]);
-        Swal.fire('Sin resultados', 'No se encontró ningún cliente con ese documento', 'info');
+        swal.fire('Sin resultados', 'No se encontró ningún cliente con ese documento', 'info');
       } else {
-        Swal.fire('Error', 'Error al buscar cliente', 'error');
+        swal.fire('Error', 'Error al buscar cliente', 'error');
       }
     }
   };
@@ -125,22 +130,22 @@ export default function ClienteList() {
     try {
       if (editando) {
         await api.put(`/Cliente/${editando.idCliente}`, payload);
-        Swal.fire('Actualizado', 'Cliente actualizado exitosamente', 'success');
+        swal.fire('Actualizado', 'Cliente actualizado exitosamente', 'success');
       } else {
         await api.post('/Cliente', payload);
-        Swal.fire('Creado', 'Cliente registrado exitosamente', 'success');
+        swal.fire('Creado', 'Cliente registrado exitosamente', 'success');
       }
       cerrarModal();
       cargarClientes();
     } catch (error) {
       const mensaje =
         error.response?.data?.mensaje || 'Error al guardar el cliente';
-      Swal.fire('Error', mensaje, 'error');
+      swal.fire('Error', mensaje, 'error');
     }
   };
 
   const eliminarCliente = async (id) => {
-    const confirmacion = await Swal.fire({
+    const confirmacion = await swal.fire({
       title: '¿Eliminar cliente?',
       text: 'Esta acción no se puede deshacer',
       icon: 'warning',
@@ -154,12 +159,12 @@ export default function ClienteList() {
 
     try {
       await api.delete(`/Cliente/${id}`);
-      Swal.fire('Eliminado', 'El cliente fue eliminado', 'success');
+      swal.fire('Eliminado', 'El cliente fue eliminado', 'success');
       cargarClientes();
     } catch (error) {
       const mensaje =
         error.response?.data?.mensaje || 'Error al eliminar el cliente';
-      Swal.fire('Error', mensaje, 'error');
+      swal.fire('Error', mensaje, 'error');
     }
   };
 
@@ -306,9 +311,8 @@ export default function ClienteList() {
                   <span className="label-text">Tipo de Documento</span>
                 </label>
                 <select
-                  className={`select select-bordered ${
-                    errors.tipoDocumento ? 'select-error' : ''
-                  }`}
+                  className={`select select-bordered ${errors.tipoDocumento ? 'select-error' : ''
+                    }`}
                   {...register('tipoDocumento')}
                 >
                   {tiposDocumento.map((t) => (
@@ -331,9 +335,8 @@ export default function ClienteList() {
                 </label>
                 <input
                   type="text"
-                  className={`input input-bordered ${
-                    errors.documento ? 'input-error' : ''
-                  }`}
+                  className={`input input-bordered ${errors.documento ? 'input-error' : ''
+                    }`}
                   {...register('documento')}
                 />
                 {errors.documento && (
@@ -351,9 +354,8 @@ export default function ClienteList() {
                   </label>
                   <input
                     type="text"
-                    className={`input input-bordered ${
-                      errors.nombres ? 'input-error' : ''
-                    }`}
+                    className={`input input-bordered ${errors.nombres ? 'input-error' : ''
+                      }`}
                     {...register('nombres')}
                   />
                   {errors.nombres && (
@@ -368,9 +370,8 @@ export default function ClienteList() {
                   </label>
                   <input
                     type="text"
-                    className={`input input-bordered ${
-                      errors.apellidos ? 'input-error' : ''
-                    }`}
+                    className={`input input-bordered ${errors.apellidos ? 'input-error' : ''
+                      }`}
                     {...register('apellidos')}
                   />
                   {errors.apellidos && (
@@ -399,9 +400,8 @@ export default function ClienteList() {
                   </label>
                   <input
                     type="text"
-                    className={`input input-bordered ${
-                      errors.email ? 'input-error' : ''
-                    }`}
+                    className={`input input-bordered ${errors.email ? 'input-error' : ''
+                      }`}
                     {...register('email')}
                   />
                   {errors.email && (
@@ -440,10 +440,25 @@ export default function ClienteList() {
                 <label className="label">
                   <span className="label-text">Fecha de Nacimiento</span>
                 </label>
-                <input
-                  type="date"
-                  className="input input-bordered"
-                  {...register('fechaNacimiento')}
+                <Controller
+                  name="fechaNacimiento"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="flex justify-center">
+                      <DayPicker
+                        mode="single"
+                        selected={field.value ? new Date(field.value + 'T00:00:00') : undefined}
+                        onSelect={(date) => {
+                          if (date) {
+                            field.onChange(format(date, 'yyyy-MM-dd'));
+                          } else {
+                            field.onChange('');
+                          }
+                        }}
+                        className="bg-base-100 p-4 rounded-lg shadow-lg"
+                      />
+                    </div>
+                  )}
                 />
               </div>
 
@@ -456,15 +471,13 @@ export default function ClienteList() {
                 >
                   Cancelar
                 </button>
-                <button
+                <LoadingButton
                   type="submit"
-                  className={`btn btn-primary ${
-                    isSubmitting ? 'loading' : ''
-                  }`}
-                  disabled={isSubmitting}
+                  isLoading={isLoading}
+                  className="w-full"
                 >
-                  {editando ? 'Actualizar' : 'Crear'}
-                </button>
+                  Entrar
+                </LoadingButton>
               </div>
             </form>
           </div>

@@ -4,8 +4,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { habitacionSchema } from './habitacionSchema';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/axios';
-import Swal from 'sweetalert2';
-import { Plus, Edit, Trash2, Bed, Hash, DollarSign, Layers } from 'lucide-react';
+import swal from '../../lib/swal';
+import {
+  Plus, Edit, Trash2, Bed, Hash, DollarSign, Layers,
+  CheckCircle, Wrench, RotateCcw
+} from 'lucide-react';
+import LoadingButton from '../../components/ui/LoadingButton';
 
 export default function HabitacionList() {
   const { user } = useAuth();
@@ -14,6 +18,7 @@ export default function HabitacionList() {
   const [cargando, setCargando] = useState(true);
   const [editando, setEditando] = useState(null);
   const [mostrarModal, setMostrarModal] = useState(false);
+  const [cambiandoEstado, setCambiandoEstado] = useState(null);
 
   const esAdmin = user?.nombreRol === 'Administrador';
 
@@ -35,7 +40,7 @@ export default function HabitacionList() {
       setHabitaciones(habRes.data);
       setTipos(tiposRes.data);
     } catch (error) {
-      Swal.fire('Error', 'No se pudieron cargar las habitaciones', 'error');
+      swal.fire('Error', 'No se pudieron cargar las habitaciones', 'error');
     } finally {
       setCargando(false);
     }
@@ -86,22 +91,22 @@ export default function HabitacionList() {
     try {
       if (editando) {
         await api.put(`/Habitacion/${editando.idHabitacion}`, payload);
-        Swal.fire('Actualizado', 'La habitación fue actualizada', 'success');
+        swal.fire('Actualizado', 'La habitación fue actualizada', 'success');
       } else {
         await api.post('/Habitacion', payload);
-        Swal.fire('Creado', 'La habitación fue creada', 'success');
+        swal.fire('Creado', 'La habitación fue creada', 'success');
       }
       cerrarModal();
       cargarDatos();
     } catch (error) {
       const mensaje =
         error.response?.data?.mensaje || 'Error al guardar la habitación';
-      Swal.fire('Error', mensaje, 'error');
+      swal.fire('Error', mensaje, 'error');
     }
   };
 
   const eliminarHabitacion = async (id) => {
-    const confirmacion = await Swal.fire({
+    const confirmacion = await swal.fire({
       title: '¿Eliminar habitación?',
       text: 'Esta acción no se puede deshacer',
       icon: 'warning',
@@ -115,12 +120,89 @@ export default function HabitacionList() {
 
     try {
       await api.delete(`/Habitacion/${id}`);
-      Swal.fire('Eliminado', 'La habitación fue eliminada', 'success');
+      swal.fire('Eliminado', 'La habitación fue eliminada', 'success');
       cargarDatos();
     } catch (error) {
       const mensaje =
         error.response?.data?.mensaje || 'Error al eliminar la habitación';
-      Swal.fire('Error', mensaje, 'error');
+      swal.fire('Error', mensaje, 'error');
+    }
+  };
+
+  // Cambio manual de estado
+  const cambiarEstado = async (idHabitacion, nuevoIdEstado, accion) => {
+    const confirmacion = await swal.fire({
+      title: `¿${accion}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sí',
+      cancelButtonText: 'Cancelar',
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
+    setCambiandoEstado(idHabitacion);
+    try {
+      await api.put(`/Habitacion/${idHabitacion}`, { idEstado: nuevoIdEstado });
+      swal.fire('Éxito', `Habitación actualizada: ${accion}`, 'success');
+      cargarDatos();
+    } catch (error) {
+      const mensaje = error.response?.data?.mensaje || 'Error al cambiar el estado';
+      swal.fire('Error', mensaje, 'error');
+    } finally {
+      setCambiandoEstado(null);
+    }
+  };
+
+  const estadoBadge = (idEstado, nombreEstado) => {
+    const clases = {
+      1: 'badge-success',
+      2: 'badge-warning',
+      3: 'badge-info',
+      4: 'badge-error',
+    };
+    return <span className={`badge ${clases[idEstado] || 'badge-ghost'}`}>{nombreEstado}</span>;
+  };
+
+  const botonesEstado = (h) => {
+    if (!esAdmin) return null;
+    if (cambiandoEstado === h.idHabitacion) {
+      return <span className="loading loading-spinner loading-xs"></span>;
+    }
+
+    switch (h.idEstado) {
+      case 1: // Disponible
+        return (
+          <button
+            className="btn btn-ghost btn-xs text-warning"
+            onClick={() => cambiarEstado(h.idHabitacion, 4, 'Poner en Mantenimiento')}
+            title="Mantenimiento"
+          >
+            <Wrench size={16} />
+          </button>
+        );
+      case 3: // Limpieza
+        return (
+          <button
+            className="btn btn-ghost btn-xs text-success"
+            onClick={() => cambiarEstado(h.idHabitacion, 1, 'Finalizar limpieza')}
+            title="Finalizar limpieza"
+          >
+            <CheckCircle size={16} />
+          </button>
+        );
+      case 4: // Mantenimiento
+        return (
+          <button
+            className="btn btn-ghost btn-xs text-primary"
+            onClick={() => cambiarEstado(h.idHabitacion, 1, 'Habilitar habitación')}
+            title="Habilitar"
+          >
+            <RotateCcw size={16} />
+          </button>
+        );
+      default: // Ocupada u otro — sin acción manual
+        return null;
     }
   };
 
@@ -156,13 +238,13 @@ export default function HabitacionList() {
                   <th><Layers size={16} className="inline mr-1" />Piso</th>
                   <th><DollarSign size={16} className="inline mr-1" />Precio</th>
                   <th>Estado</th>
-                  {esAdmin && <th>Acciones</th>}
+                  <th>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {habitaciones.length === 0 ? (
                   <tr>
-                    <td colSpan={esAdmin ? 6 : 5} className="text-center text-gray-500 py-8">
+                    <td colSpan={6} className="text-center text-gray-500 py-8">
                       No hay habitaciones registradas
                     </td>
                   </tr>
@@ -173,39 +255,30 @@ export default function HabitacionList() {
                       <td>{h.nombreTipo}</td>
                       <td>{h.piso ?? '—'}</td>
                       <td>S/ {h.precioNoche.toFixed(2)}</td>
+                      <td>{estadoBadge(h.idEstado, h.nombreEstado)}</td>
                       <td>
-                        <span
-                          className={`badge ${
-                            h.nombreEstado === 'Disponible'
-                              ? 'badge-success'
-                              : h.nombreEstado === 'Ocupada'
-                              ? 'badge-warning'
-                              : 'badge-ghost'
-                          }`}
-                        >
-                          {h.nombreEstado}
-                        </span>
+                        <div className="flex gap-1">
+                          {esAdmin && (
+                            <>
+                              <button
+                                className="btn btn-ghost btn-xs"
+                                onClick={() => abrirModalEditar(h)}
+                                title="Editar"
+                              >
+                                <Edit size={16} />
+                              </button>
+                              <button
+                                className="btn btn-ghost btn-xs text-error"
+                                onClick={() => eliminarHabitacion(h.idHabitacion)}
+                                title="Eliminar"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
+                          {botonesEstado(h)}
+                        </div>
                       </td>
-                      {esAdmin && (
-                        <td>
-                          <div className="flex gap-1">
-                            <button
-                              className="btn btn-ghost btn-xs"
-                              onClick={() => abrirModalEditar(h)}
-                              title="Editar"
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button
-                              className="btn btn-ghost btn-xs text-error"
-                              onClick={() => eliminarHabitacion(h.idHabitacion)}
-                              title="Eliminar"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      )}
                     </tr>
                   ))
                 )}
@@ -231,9 +304,8 @@ export default function HabitacionList() {
                 </label>
                 <input
                   type="text"
-                  className={`input input-bordered ${
-                    errors.numeroHabitacion ? 'input-error' : ''
-                  }`}
+                  className={`input input-bordered ${errors.numeroHabitacion ? 'input-error' : ''
+                    }`}
                   {...register('numeroHabitacion')}
                 />
                 {errors.numeroHabitacion && (
@@ -250,9 +322,8 @@ export default function HabitacionList() {
                 </label>
                 <input
                   type="number"
-                  className={`input input-bordered ${
-                    errors.piso ? 'input-error' : ''
-                  }`}
+                  className={`input input-bordered ${errors.piso ? 'input-error' : ''
+                    }`}
                   {...register('piso')}
                 />
                 {errors.piso && (
@@ -268,9 +339,8 @@ export default function HabitacionList() {
                   <span className="label-text">Tipo de Habitación</span>
                 </label>
                 <select
-                  className={`select select-bordered ${
-                    errors.idTipo ? 'select-error' : ''
-                  }`}
+                  className={`select select-bordered ${errors.idTipo ? 'select-error' : ''
+                    }`}
                   {...register('idTipo')}
                   defaultValue=""
                 >
@@ -298,9 +368,8 @@ export default function HabitacionList() {
                 <input
                   type="number"
                   step="0.01"
-                  className={`input input-bordered ${
-                    errors.precioNoche ? 'input-error' : ''
-                  }`}
+                  className={`input input-bordered ${errors.precioNoche ? 'input-error' : ''
+                    }`}
                   {...register('precioNoche')}
                 />
                 {errors.precioNoche && (
@@ -330,15 +399,13 @@ export default function HabitacionList() {
                 >
                   Cancelar
                 </button>
-                <button
+                <LoadingButton
                   type="submit"
-                  className={`btn btn-primary ${
-                    isSubmitting ? 'loading' : ''
-                  }`}
-                  disabled={isSubmitting}
+                  isLoading={isLoading}
+                  className="w-full"
                 >
-                  {editando ? 'Actualizar' : 'Crear'}
-                </button>
+                  Entrar
+                </LoadingButton>
               </div>
             </form>
           </div>

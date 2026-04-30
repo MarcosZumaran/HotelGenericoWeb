@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import api from '../../api/axios';
-import Swal from 'sweetalert2';
 import { DoorOpen, Hash, User, Calendar, DollarSign, Activity } from 'lucide-react';
+import swal from '../../lib/swal';
 
 export default function CheckOut() {
   const [estancias, setEstancias] = useState([]);
@@ -16,7 +16,7 @@ export default function CheckOut() {
       // Filtramos solo las activas (por si el backend devuelve todas)
       setEstancias(res.data.filter((e) => e.estado === 'Activa'));
     } catch (error) {
-      Swal.fire('Error', 'No se pudieron cargar las estancias activas', 'error');
+      swal.fire('Error', 'No se pudieron cargar las estancias activas', 'error');
     } finally {
       setCargando(false);
     }
@@ -28,7 +28,7 @@ export default function CheckOut() {
   }, []);
 
   const realizarCheckOut = async (idEstancia, numeroHabitacion) => {
-    const confirmacion = await Swal.fire({
+    const confirmacion = await swal.fire({
       title: '¿Confirmar Check‑Out?',
       html: `Habitación <strong>${numeroHabitacion}</strong> pasará a estado <em>Limpieza</em>.`,
       icon: 'question',
@@ -43,12 +43,12 @@ export default function CheckOut() {
     setProcesandoId(idEstancia);
     try {
       await api.post(`/Estancia/${idEstancia}/checkout`);
-      Swal.fire('Check‑Out exitoso', `La habitación ${numeroHabitacion} ahora está en limpieza.`, 'success');
+      swal.fire('Check‑Out exitoso', `La habitación ${numeroHabitacion} ahora está en limpieza.`, 'success');
       cargarEstancias();
     } catch (error) {
       const mensaje =
         error.response?.data?.mensaje || 'Error al realizar el Check‑Out';
-      Swal.fire('Error', mensaje, 'error');
+      swal.fire('Error', mensaje, 'error');
     } finally {
       setProcesandoId(null);
     }

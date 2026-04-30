@@ -4,8 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { productoSchema } from './productoSchema';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/axios';
-import Swal from 'sweetalert2';
 import { Plus, Edit, Trash2, Package, Hash, DollarSign, Layers } from 'lucide-react';
+import swal from '../../lib/swal';
+import LoadingButton from '../../components/ui/LoadingButton';
 
 export default function ProductoList() {
   const { user } = useAuth();
@@ -30,7 +31,7 @@ export default function ProductoList() {
       const res = await api.get('/Producto');
       setProductos(res.data);
     } catch (error) {
-      Swal.fire('Error', 'No se pudieron cargar los productos', 'error');
+      swal.fire('Error', 'No se pudieron cargar los productos', 'error');
     } finally {
       setCargando(false);
     }
@@ -92,22 +93,22 @@ export default function ProductoList() {
     try {
       if (editando) {
         await api.put(`/Producto/${editando.idProducto}`, payload);
-        Swal.fire('Actualizado', 'Producto actualizado exitosamente', 'success');
+        swal.fire('Actualizado', 'Producto actualizado exitosamente', 'success');
       } else {
         await api.post('/Producto', payload);
-        Swal.fire('Creado', 'Producto registrado exitosamente', 'success');
+        swal.fire('Creado', 'Producto registrado exitosamente', 'success');
       }
       cerrarModal();
       cargarProductos();
     } catch (error) {
       const mensaje =
         error.response?.data?.mensaje || 'Error al guardar el producto';
-      Swal.fire('Error', mensaje, 'error');
+      swal.fire('Error', mensaje, 'error');
     }
   };
 
   const eliminarProducto = async (id) => {
-    const confirmacion = await Swal.fire({
+    const confirmacion = await swal.fire({
       title: '¿Eliminar producto?',
       text: 'Esta acción no se puede deshacer',
       icon: 'warning',
@@ -121,12 +122,12 @@ export default function ProductoList() {
 
     try {
       await api.delete(`/Producto/${id}`);
-      Swal.fire('Eliminado', 'El producto fue eliminado', 'success');
+      swal.fire('Eliminado', 'El producto fue eliminado', 'success');
       cargarProductos();
     } catch (error) {
       const mensaje =
         error.response?.data?.mensaje || 'Error al eliminar el producto';
-      Swal.fire('Error', mensaje, 'error');
+      swal.fire('Error', mensaje, 'error');
     }
   };
 
@@ -351,13 +352,13 @@ export default function ProductoList() {
                 >
                   Cancelar
                 </button>
-                <button
+                <LoadingButton
                   type="submit"
-                  className={`btn btn-primary ${isSubmitting ? 'loading' : ''}`}
-                  disabled={isSubmitting}
+                  isLoading={isLoading}
+                  className="w-full"
                 >
-                  {editando ? 'Actualizar' : 'Crear'}
-                </button>
+                  Entrar
+                </LoadingButton>
               </div>
             </form>
           </div>
