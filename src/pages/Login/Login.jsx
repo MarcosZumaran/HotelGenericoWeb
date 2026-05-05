@@ -89,7 +89,7 @@ export default function Login() {
               </label>
               <input
                 type="password"
-                placeholder="••••••••"
+                placeholder="Contraseña"
                 className={`input input-bordered ${errors.password ? 'input-error' : ''}`}
                 {...register('password')}
               />

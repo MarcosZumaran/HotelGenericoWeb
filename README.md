@@ -1,8 +1,8 @@
-# La Rica Noche Web
+# Hotel Generico Web
 
-Interfaz web del sistema **La Rica Noche**, desarrollada para consumir la API del proyecto y centralizar la gestión visual del alojamiento.
+Interfaz web del sistema **Hotel Generico**, desarrollada para consumir la API del proyecto y centralizar la gestión visual del alojamiento.
 
-Repositorio del backend: https://github.com/MarcosZumaran/LaRicaNoche.Api
+Repositorio del backend: https://github.com/MarcosZumaran/HotelGenericoApi
 
 ---
 
@@ -68,8 +68,8 @@ La estructura del proyecto está pensada para mantener una navegación clara, se
 ## Instalación
 
 ```bash
-git clone https://github.com/MarcosZumaran/LaRicaNoche.Web.git
-cd LaRicaNoche.Web
+git clone https://github.com/MarcosZumaran/HotelGenericoWeb.git
+cd HotelGenericoWeb
 npm install
 ```
 
@@ -136,7 +136,7 @@ src/
 Este frontend depende de la API para obtener y registrar información del sistema.
 
 Backend del proyecto:  
-https://github.com/MarcosZumaran/LaRicaNoche.Api
+https://github.com/MarcosZumaran/HotelGenericoApi
 
 Flujo general:
 
@@ -159,4 +159,4 @@ Usuario -> Frontend -> API -> Base de datos
 MarcosZumaran
 
 Repositorio:  
-https://github.com/MarcosZumaran/LaRicaNoche.Web
+https://github.com/MarcosZumaran/HotelGenericoWeb
