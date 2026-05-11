@@ -12,6 +12,7 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
+import { FileSpreadsheet } from 'lucide-react';
 
 const columnHelper = createColumnHelper();
 
@@ -23,7 +24,7 @@ export default function CierreCaja() {
   const [sorting, setSorting] = useState([]);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [mostrarPdf, setMostrarPdf] = useState(false);
-  
+
   // --- NUEVOS ESTADOS PARA SUNAT ---
   const [estadoEnvio, setEstadoEnvio] = useState(null);
   const [enviando, setEnviando] = useState(false);
@@ -100,10 +101,41 @@ export default function CierreCaja() {
 
   const totalGeneral = datos.reduce((sum, item) => sum + (item.ingresos || 0), 0);
 
-  const generarPdf = () => {
-    const url = `${import.meta.env.VITE_API_URL}/Pdf/CierreCaja?fecha=${fecha}`;
-    setPdfUrl(url);
-    setMostrarPdf(true);
+  const generarPdf = async () => {
+    try {
+      const response = await api.get('/Pdf/CierreCaja', {
+        params: { fecha },
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      setPdfUrl(url);
+      setMostrarPdf(true);
+    } catch (error) {
+      swal.fire('Error', 'No se pudo generar el PDF', 'error');
+    }
+  };
+
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5054/api';
+
+  const exportarExcel = async () => {
+    try {
+      const response = await api.get('/Reporte/cierre-caja/excel', {
+        params: { fecha },
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `cierre_caja_${fecha}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      swal.fire('Error', 'No se pudo exportar el Excel', 'error');
+    }
   };
 
   // --- NUEVA FUNCIÓN: simular envío a SUNAT ---
@@ -272,6 +304,9 @@ export default function CierreCaja() {
                   )}
                   <button className="btn btn-primary btn-sm" onClick={generarPdf}>
                     <FileText size={16} className="mr-1" /> Generar PDF
+                  </button>
+                  <button className="btn btn-sm btn-success" onClick={exportarExcel}>
+                    <FileSpreadsheet size={16} /> Exportar Excel
                   </button>
                 </div>
               </div>
