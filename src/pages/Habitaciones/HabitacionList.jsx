@@ -19,15 +19,15 @@ import {
 } from 'lucide-react';
 import useSignalR from '../../hooks/useSignalR';
 
-// Colores de fondo para cada estado (Tailwind)
-const cardClases = {
+// Estilos de fondo para cada estado
+const estilosCarta = {
   1: 'bg-success/10 border-success/40 hover:bg-success/20',
   2: 'bg-warning/10 border-warning/40 hover:bg-warning/20',
   3: 'bg-info/10 border-info/40 hover:bg-info/20',
   4: 'bg-error/10 border-error/40 hover:bg-error/20',
 };
 
-const colorBadge = {
+const coloresInsignia = {
   1: 'badge-success',
   2: 'badge-warning',
   3: 'badge-info',
@@ -53,36 +53,39 @@ export default function HabitacionList() {
   const [cantidadConsumo, setCantidadConsumo] = useState(1);
   const [agregandoConsumo, setAgregandoConsumo] = useState(false);
 
-  const [modoCheckIn, setModoCheckIn] = useState('inmediato');
+  const [modoEntrada, setModoEntrada] = useState('inmediato');
   const [consumos, setConsumos] = useState([]);
-  const [estanciaActiva, setEstanciaActiva] = useState(null); // datos de la estancia activa (fechas, monto)
+  const [estanciaActiva, setEstanciaActiva] = useState(null);
 
   // Estado para las reservas del calendario
   const [reservas, setReservas] = useState([]);
 
-  const [editandoId, setEditandoId] = useState(null);
-  const [editCantidad, setEditCantidad] = useState(1);
-  const [eliminandoId, setEliminandoId] = useState(null);
+  // Estado para el tooltip del calendario
+  const [tooltip, setTooltip] = useState({ visible: false, contenido: null, x: 0, y: 0 });
+
+  const [idEditando, setIdEditando] = useState(null);
+  const [editarCantidad, setEditarCantidad] = useState(1);
+  const [idEliminando, setIdEliminando] = useState(null);
 
   // Formulario de edición/creación
   const {
     register,
     handleSubmit,
-    reset: resetForm,
+    reset: resetearFormulario,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(habitacionSchema),
   });
 
-  // Formulario de Check‑In (simplificado, reutilizando estados locales)
-  const [checkinData, setCheckinData] = useState({
+  // Datos del formulario de Entrada
+  const [datosEntrada, setDatosEntrada] = useState({
     tipoDocumento: '1',
     documento: '',
     nombres: '',
     apellidos: '',
     telefono: '',
     fechaEntradaPrevista: format(new Date(), 'yyyy-MM-dd'),
-    fechaCheckoutPrevista: format(new Date(), 'yyyy-MM-dd'),
+    fechaSalidaPrevista: format(new Date(), 'yyyy-MM-dd'),
     metodoPago: '005',
     usarClienteAnonimo: false,
   });
@@ -108,11 +111,19 @@ export default function HabitacionList() {
     try {
       const res = await api.get(`/Estancia/reservas/${idHabitacion}`);
       const eventos = res.data.map(r => ({
-        title: `${r.clienteNombre ?? 'Reserva'} (${r.estado})`,
+        title: `${r.clienteNombre ?? 'Reserva'}`,
         start: new Date(r.fechaEntradaPrevista),
         end: new Date(r.fechaSalidaPrevista),
-        backgroundColor: r.estado === 'Confirmada' ? '#22c55e' : r.estado === 'Check‑in realizado' ? '#f59e0b' : '#6b7280',
-        borderColor: r.estado === 'Confirmada' ? '#16a34a' : r.estado === 'Check‑in realizado' ? '#d97706' : '#4b5563',
+        backgroundColor: r.estado === 'Confirmada' ? '#22c55e' : r.estado === 'Entrada realizada' ? '#f59e0b' : '#6b7280',
+        borderColor: r.estado === 'Confirmada' ? '#16a34a' : r.estado === 'Entrada realizada' ? '#d97706' : '#4b5563',
+        extendedProps: {
+          idReserva: r.idReserva,
+          cliente: r.clienteNombre,
+          entrada: r.fechaEntradaPrevista,
+          salida: r.fechaSalidaPrevista,
+          monto: r.montoTotal,
+          estado: r.estado
+        }
       }));
       setReservas(eventos);
     } catch (error) {
@@ -147,8 +158,7 @@ export default function HabitacionList() {
   }, []);
 
   // SignalR: escuchar cambios de estado en tiempo real
-  useSignalR((data) => {
-    console.log('Cambio recibido:', data);
+  useSignalR(() => {
     cargarDatos();
   });
 
@@ -156,11 +166,11 @@ export default function HabitacionList() {
     if (!habitacionSeleccionada) return;
     switch (accion) {
       case 'CheckIn':
-        setModalAbierto('checkin');
+        setModalAbierto('entrada');
         break;
       case 'CheckOut':
       case 'PasarLimpieza':
-        setModalAbierto('checkout');
+        setModalAbierto('salida');
         break;
       case 'Mantenimiento':
         await cambiarEstado(habitacionSeleccionada.idHabitacion, 4, 'Poner en Mantenimiento');
@@ -190,30 +200,30 @@ export default function HabitacionList() {
     }
   };
 
-  const ejecutarCheckIn = async () => {
+  const ejecutarEntrada = async () => {
     setCargandoAccion(true);
     try {
       const res = await api.post('/Estancia/checkin', {
         idHabitacion: habitacionSeleccionada.idHabitacion,
-        ...checkinData,
-        fechaCheckoutPrevista: checkinData.fechaCheckoutPrevista,
+        ...datosEntrada,
+        fechaCheckoutPrevista: datosEntrada.fechaSalidaPrevista,
       });
       swal.fire({
         icon: 'success',
-        title: '¡Check‑In exitoso!',
-        html: `<p>Estancia N° <strong>${res.data.idEstancia}</strong></p><p>Monto: <strong>S/ ${res.data.montoTotal.toFixed(2)}</strong></p>`,
+        title: '¡Entrada exitosa!',
+        html: `<p>Entrada N° <strong>${res.data.idEstancia}</strong></p><p>Monto: <strong>S/ ${res.data.montoTotal.toFixed(2)}</strong></p>`,
         confirmButtonText: 'Aceptar',
       });
       cargarDatos();
       setModalAbierto(null);
     } catch (error) {
-      swal.fire('Error', error.response?.data?.mensaje || 'Error al realizar el Check‑In', 'error');
+      swal.fire('Error', error.response?.data?.mensaje || 'Error al realizar la Entrada', 'error');
     } finally {
       setCargandoAccion(false);
     }
   };
 
-  const ejecutarCheckOut = async () => {
+  const ejecutarSalida = async () => {
     if (!habitacionSeleccionada?.idEstanciaActiva) {
       swal.fire('Error', 'No se encontró la estancia activa', 'error');
       return;
@@ -221,11 +231,11 @@ export default function HabitacionList() {
     setCargandoAccion(true);
     try {
       await api.post(`/Estancia/${habitacionSeleccionada.idEstanciaActiva}/checkout`);
-      swal.fire('Éxito', 'Check‑Out realizado. La habitación pasa a Limpieza.', 'success');
+      swal.fire('Éxito', 'Salida realizada. La habitación pasa a Limpieza.', 'success');
       cargarDatos();
       setModalAbierto(null);
     } catch (error) {
-      swal.fire('Error', error.response?.data?.mensaje || 'Error al realizar el Check‑Out', 'error');
+      swal.fire('Error', error.response?.data?.mensaje || 'Error al realizar la Salida', 'error');
     } finally {
       setCargandoAccion(false);
     }
@@ -236,20 +246,20 @@ export default function HabitacionList() {
     try {
       const res = await api.post('/Estancia/reserva', {
         idHabitacion: habitacionSeleccionada.idHabitacion,
-        tipoDocumento: checkinData.tipoDocumento,
-        documento: checkinData.documento,
-        nombres: checkinData.nombres,
-        apellidos: checkinData.apellidos,
-        telefono: checkinData.telefono,
-        fechaEntradaPrevista: checkinData.fechaEntradaPrevista,
-        fechaSalidaPrevista: checkinData.fechaCheckoutPrevista,
-        metodoPago: checkinData.metodoPago,
-        usarClienteAnonimo: checkinData.usarClienteAnonimo,
+        tipoDocumento: datosEntrada.tipoDocumento,
+        documento: datosEntrada.documento,
+        nombres: datosEntrada.nombres,
+        apellidos: datosEntrada.apellidos,
+        telefono: datosEntrada.telefono,
+        fechaEntradaPrevista: datosEntrada.fechaEntradaPrevista,
+        fechaSalidaPrevista: datosEntrada.fechaSalidaPrevista,
+        metodoPago: datosEntrada.metodoPago,
+        usarClienteAnonimo: datosEntrada.usarClienteAnonimo,
       });
       swal.fire({
         icon: 'success',
         title: '¡Reserva creada!',
-        html: `<p>Reserva N° <strong>${res.data.idReserva}</strong></p><p>Entrada: <strong>${new Date(checkinData.fechaEntradaPrevista).toLocaleDateString('es-PE')}</strong></p>`,
+        html: `<p>Reserva N° <strong>${res.data.idReserva}</strong></p><p>Entrada: <strong>${new Date(datosEntrada.fechaEntradaPrevista).toLocaleDateString('es-PE')}</strong></p>`,
         confirmButtonText: 'Aceptar',
       });
       cargarDatos();
@@ -275,7 +285,7 @@ export default function HabitacionList() {
       swal.fire('Agregado', 'Consumo registrado exitosamente', 'success');
       cargarDatos();
       cargarConsumos(habitacionSeleccionada.idEstanciaActiva);
-      cargarDetalleEstancia(habitacionSeleccionada.idEstanciaActiva); // actualiza el monto total
+      cargarDetalleEstancia(habitacionSeleccionada.idEstanciaActiva);
       setProductoSeleccionado('');
       setCantidadConsumo(1);
     } catch (error) {
@@ -286,13 +296,13 @@ export default function HabitacionList() {
   };
 
   const abrirModalCrear = () => {
-    resetForm({ numeroHabitacion: '', piso: '', descripcion: '', idTipo: '', precioNoche: '' });
+    resetearFormulario({ numeroHabitacion: '', piso: '', descripcion: '', idTipo: '', precioNoche: '' });
     setHabitacionSeleccionada(null);
     setModalAbierto('crear');
   };
 
   const abrirModalEditar = (h) => {
-    resetForm({
+    resetearFormulario({
       numeroHabitacion: h.numeroHabitacion,
       piso: h.piso ?? '',
       descripcion: h.descripcion ?? '',
@@ -303,7 +313,7 @@ export default function HabitacionList() {
     setModalAbierto('editar');
   };
 
-  const onSubmitAdmin = async (data) => {
+  const manejarEnvioAdmin = async (data) => {
     const payload = { ...data, piso: data.piso ?? null, descripcion: data.descripcion || null };
     try {
       if (modalAbierto === 'editar' && habitacionSeleccionada) {
@@ -359,12 +369,12 @@ export default function HabitacionList() {
         )}
       </div>
 
-      {/* Grid de cartas */}
+      {/* Cuadrícula de cartas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {habitaciones.map((h) => (
           <div
             key={h.idHabitacion}
-            className={`card border-2 ${cardClases[h.idEstado] || 'bg-base-200 border-base-300'} shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer`}
+            className={`card border-2 ${estilosCarta[h.idEstado] || 'bg-base-200 border-base-300'} shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer`}
             onClick={() => {
               setHabitacionSeleccionada(h);
               setModalAbierto('detalle');
@@ -381,7 +391,7 @@ export default function HabitacionList() {
             <div className="card-body p-4">
               <div className="flex justify-between items-start mb-2">
                 <h3 className="text-2xl font-bold">{h.numeroHabitacion}</h3>
-                <span className={`badge ${colorBadge[h.idEstado] || 'badge-ghost'}`}>{h.nombreEstado}</span>
+                <span className={`badge ${coloresInsignia[h.idEstado] || 'badge-ghost'}`}>{h.nombreEstado}</span>
               </div>
               <p className="text-sm mb-1"><Layers size={14} className="inline mr-1" />{h.nombreTipo}</p>
               <p className="text-sm mb-1"><Hash size={14} className="inline mr-1" />Piso: {h.piso ?? '—'}</p>
@@ -409,7 +419,7 @@ export default function HabitacionList() {
                     <span className="text-lg font-normal text-base-content/70">— {habitacionSeleccionada.nombreTipo}</span>
                   </h3>
                   <div className="flex items-center gap-3 mt-2">
-                    <span className={`badge badge-lg ${colorBadge[habitacionSeleccionada.idEstado] || 'badge-ghost'}`}>
+                    <span className={`badge badge-lg ${coloresInsignia[habitacionSeleccionada.idEstado] || 'badge-ghost'}`}>
                       {habitacionSeleccionada.nombreEstado}
                     </span>
                     {habitacionSeleccionada.clienteHuesped && (
@@ -464,13 +474,12 @@ export default function HabitacionList() {
                         <p className="text-sm"><strong>Cliente:</strong> {estanciaActiva.clienteNombreCompleto}</p>
                         <div className="flex items-center justify-between text-sm">
                           <span>
-                            <strong>Check‑In:</strong> {format(new Date(estanciaActiva.fechaCheckin), 'dd/MM/yy')}
+                            <strong>Entrada:</strong> {format(new Date(estanciaActiva.fechaCheckin), 'dd/MM/yy')}
                           </span>
                           <span>
                             <strong>Salida:</strong> {format(new Date(estanciaActiva.fechaCheckoutPrevista), 'dd/MM/yy')}
                           </span>
                         </div>
-                        {/* Barra de progreso de días */}
                         <div className="mt-2">
                           <progress
                             className="progress progress-success w-full"
@@ -512,31 +521,40 @@ export default function HabitacionList() {
                           </button>
                         </>
                       )}
-                      {habitacionSeleccionada.accionesDisponibles?.map((accion) => (
-                        <button
-                          key={accion}
-                          className={`btn btn-sm ${accion === 'CheckIn'
-                            ? 'btn-primary'
-                            : accion === 'CheckOut' || accion === 'PasarLimpieza'
-                              ? 'btn-success'
-                              : accion === 'Mantenimiento'
-                                ? 'btn-warning'
-                                : accion === 'FinalizarLimpieza'
-                                  ? 'btn-info'
-                                  : 'btn-primary'
-                            }`}
-                          onClick={() => ejecutarAccion(accion)}
-                          disabled={cambiandoEstado === habitacionSeleccionada.idHabitacion}
-                        >
-                          {accion === 'CheckIn' && <UserPlus size={16} />}
-                          {accion === 'CheckOut' && <DoorOpen size={16} />}
-                          {accion === 'PasarLimpieza' && <CheckCircle size={16} />}
-                          {accion === 'Mantenimiento' && <Wrench size={16} />}
-                          {accion === 'FinalizarLimpieza' && <CheckCircle size={16} />}
-                          {accion === 'Habilitar' && <RotateCcw size={16} />}
-                          <span className="ml-1">{accion}</span>
-                        </button>
-                      ))}
+                      {habitacionSeleccionada.accionesDisponibles?.map((accion) => {
+                        const etiqueta =
+                          accion === 'CheckIn' ? 'Entrada' :
+                            accion === 'CheckOut' ? 'Salida' :
+                              accion === 'PasarLimpieza' ? 'Pasar a Limpieza' :
+                                accion === 'Mantenimiento' ? 'Mantenimiento' :
+                                  accion === 'FinalizarLimpieza' ? 'Finalizar Limpieza' :
+                                    accion === 'Habilitar' ? 'Habilitar' : accion;
+                        return (
+                          <button
+                            key={accion}
+                            className={`btn btn-sm ${accion === 'CheckIn'
+                              ? 'btn-primary'
+                              : accion === 'CheckOut' || accion === 'PasarLimpieza'
+                                ? 'btn-success'
+                                : accion === 'Mantenimiento'
+                                  ? 'btn-warning'
+                                  : accion === 'FinalizarLimpieza'
+                                    ? 'btn-info'
+                                    : 'btn-primary'
+                              }`}
+                            onClick={() => ejecutarAccion(accion)}
+                            disabled={cambiandoEstado === habitacionSeleccionada.idHabitacion}
+                          >
+                            {accion === 'CheckIn' && <UserPlus size={16} />}
+                            {accion === 'CheckOut' && <DoorOpen size={16} />}
+                            {accion === 'PasarLimpieza' && <CheckCircle size={16} />}
+                            {accion === 'Mantenimiento' && <Wrench size={16} />}
+                            {accion === 'FinalizarLimpieza' && <CheckCircle size={16} />}
+                            {accion === 'Habilitar' && <RotateCcw size={16} />}
+                            <span className="ml-1">{etiqueta}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -552,7 +570,6 @@ export default function HabitacionList() {
                         <ShoppingCart size={18} className="text-warning" /> Consumos
                       </h4>
 
-                      {/* Formulario para agregar */}
                       <div className="flex gap-2 items-end mb-4">
                         <div className="form-control flex-1">
                           <label className="label py-1">
@@ -596,7 +613,6 @@ export default function HabitacionList() {
                         </button>
                       </div>
 
-                      {/* Tabla de consumos ya registrados */}
                       {consumos.length > 0 && (
                         <div className="overflow-x-auto mt-3">
                           <table className="table table-zebra table-sm">
@@ -614,28 +630,28 @@ export default function HabitacionList() {
                                 <tr key={c.idItem}>
                                   <td>{c.nombreProducto}</td>
                                   <td>
-                                    {editandoId === c.idItem ? (
+                                    {idEditando === c.idItem ? (
                                       <div className="flex items-center gap-1">
                                         <input
                                           type="number"
                                           className="input input-bordered input-xs w-16"
-                                          value={editCantidad}
+                                          value={editarCantidad}
                                           min="1"
-                                          onChange={(e) => setEditCantidad(parseInt(e.target.value) || 1)}
+                                          onChange={(e) => setEditarCantidad(parseInt(e.target.value) || 1)}
                                         />
                                         <button
                                           className="btn btn-ghost btn-xs text-success"
                                           onClick={async () => {
-                                            if (editCantidad < 1) return;
+                                            if (editarCantidad < 1) return;
                                             try {
                                               await api.put(`/Estancia/${habitacionSeleccionada.idEstanciaActiva}/consumo/${c.idItem}`, {
-                                                cantidad: editCantidad,
+                                                cantidad: editarCantidad,
                                               });
                                               swal.fire('Actualizado', 'Consumo modificado', 'success');
                                               cargarConsumos(habitacionSeleccionada.idEstanciaActiva);
                                               cargarDetalleEstancia(habitacionSeleccionada.idEstanciaActiva);
                                               cargarDatos();
-                                              setEditandoId(null);
+                                              setIdEditando(null);
                                             } catch (err) {
                                               swal.fire('Error', err.response?.data?.mensaje || 'Error al actualizar', 'error');
                                             }
@@ -645,7 +661,7 @@ export default function HabitacionList() {
                                         </button>
                                         <button
                                           className="btn btn-ghost btn-xs"
-                                          onClick={() => setEditandoId(null)}
+                                          onClick={() => setIdEditando(null)}
                                         >
                                           ✕
                                         </button>
@@ -657,13 +673,13 @@ export default function HabitacionList() {
                                   <td>S/ {c.precioUnitario.toFixed(2)}</td>
                                   <td className="font-semibold">S/ {c.subtotal.toFixed(2)}</td>
                                   <td>
-                                    {editandoId !== c.idItem && (
+                                    {idEditando !== c.idItem && (
                                       <div className="flex gap-1">
                                         <button
                                           className="btn btn-ghost btn-xs"
                                           onClick={() => {
-                                            setEditandoId(c.idItem);
-                                            setEditCantidad(c.cantidad);
+                                            setIdEditando(c.idItem);
+                                            setEditarCantidad(c.cantidad);
                                           }}
                                           title="Editar"
                                         >
@@ -671,7 +687,7 @@ export default function HabitacionList() {
                                         </button>
                                         <button
                                           className="btn btn-ghost btn-xs text-error"
-                                          disabled={eliminandoId === c.idItem}
+                                          disabled={idEliminando === c.idItem}
                                           onClick={async () => {
                                             const confirmacion = await swal.fire({
                                               title: '¿Eliminar consumo?',
@@ -683,7 +699,7 @@ export default function HabitacionList() {
                                               cancelButtonText: 'Cancelar',
                                             });
                                             if (!confirmacion.isConfirmed) return;
-                                            setEliminandoId(c.idItem);
+                                            setIdEliminando(c.idItem);
                                             try {
                                               await api.delete(`/Estancia/${habitacionSeleccionada.idEstanciaActiva}/consumo/${c.idItem}`);
                                               swal.fire('Eliminado', 'El consumo fue eliminado', 'success');
@@ -693,12 +709,12 @@ export default function HabitacionList() {
                                             } catch (err) {
                                               swal.fire('Error', err.response?.data?.mensaje || 'Error al eliminar', 'error');
                                             } finally {
-                                              setEliminandoId(null);
+                                              setIdEliminando(null);
                                             }
                                           }}
                                           title="Eliminar"
                                         >
-                                          {eliminandoId === c.idItem ? (
+                                          {idEliminando === c.idItem ? (
                                             <span className="loading loading-spinner loading-xs"></span>
                                           ) : (
                                             <Trash2 size={14} />
@@ -744,6 +760,26 @@ export default function HabitacionList() {
                             week: 'Semana',
                             day: 'Día',
                           }}
+                          eventMouseEnter={(info) => {
+                            const rect = info.el.getBoundingClientRect();
+                            const { idReserva, cliente, entrada, salida, monto, estado } = info.event.extendedProps;
+                            setTooltip({
+                              visible: true,
+                              x: rect.left + window.scrollX + rect.width / 2,
+                              y: rect.top + window.scrollY - 10,
+                              contenido: {
+                                idReserva,
+                                cliente,
+                                entrada: new Date(entrada).toLocaleDateString('es-PE'),
+                                salida: new Date(salida).toLocaleDateString('es-PE'),
+                                monto,
+                                estado
+                              }
+                            });
+                          }}
+                          eventMouseLeave={() => {
+                            setTooltip({ visible: false, contenido: null, x: 0, y: 0 });
+                          }}
                         />
                       </div>
                     </div>
@@ -752,7 +788,7 @@ export default function HabitacionList() {
               </div>
             </div>
 
-            {/* Footer con total acumulado */}
+            {/* Pie con total acumulado */}
             {estanciaActiva && (
               <div className="absolute bottom-0 left-0 right-0 p-4 bg-base-100/90 backdrop-blur-xl border-t border-base-300 rounded-b-2xl z-10">
                 <div className="flex justify-between items-center max-w-[95vw] mx-auto px-4">
@@ -770,95 +806,116 @@ export default function HabitacionList() {
                 </div>
               </div>
             )}
+
+            {/* Tooltip flotante del calendario */}
+            {tooltip.visible && tooltip.contenido && (
+              <div
+                className="fixed z-[9999] pointer-events-none"
+                style={{ left: tooltip.x, top: tooltip.y, transform: 'translate(-50%, -100%)' }}
+              >
+                <div className="card bg-base-100 shadow-xl border border-base-300 p-3 rounded-xl text-sm min-w-[200px]">
+                  <div className="space-y-1">
+                    <p className="font-bold text-primary">Reserva #{tooltip.contenido.idReserva}</p>
+                    <p><span className="text-base-content/70">Cliente:</span> {tooltip.contenido.cliente}</p>
+                    <p><span className="text-base-content/70">Entrada:</span> {tooltip.contenido.entrada}</p>
+                    <p><span className="text-base-content/70">Salida:</span> {tooltip.contenido.salida}</p>
+                    <p><span className="text-base-content/70">Monto:</span> S/ {parseFloat(tooltip.contenido.monto).toFixed(2)}</p>
+                    <span className={`badge badge-sm ${tooltip.contenido.estado === 'Confirmada' ? 'badge-success' : 'badge-warning'}`}>
+                      {tooltip.contenido.estado}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Modal de Check‑In */}
-      {modalAbierto === 'checkin' && habitacionSeleccionada && (
+      {/* Modal de Entrada */}
+      {modalAbierto === 'entrada' && habitacionSeleccionada && (
         <div className="modal modal-open modal-middle">
-          <div className={`modal-box w-full overflow-x-hidden max-w-[95vw] max-h-[90vh] overflow-y-auto ${modoCheckIn === 'reserva' ? 'md:max-w-5xl' : 'md:max-w-3xl'}`}>
+          <div className={`modal-box w-full overflow-x-hidden max-w-[95vw] max-h-[90vh] overflow-y-auto ${modoEntrada === 'reserva' ? 'md:max-w-5xl' : 'md:max-w-3xl'}`}>
             <h3 className="text-lg font-bold mb-4">
               <UserPlus className="inline mr-2" />
-              {modoCheckIn === 'inmediato' ? 'Check‑In' : 'Nueva Reserva'}
+              {modoEntrada === 'inmediato' ? 'Entrada' : 'Nueva Reserva'}
               {' — Hab. ' + habitacionSeleccionada.numeroHabitacion}
             </h3>
             <div className="form-control mb-4">
               <label className="label cursor-pointer">
                 <span className="label-text font-semibold">Tipo de operación</span>
                 <div className="flex gap-2">
-                  <button type="button" className={`btn btn-sm ${modoCheckIn === 'inmediato' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setModoCheckIn('inmediato')}>Ahora (Check‑In)</button>
-                  <button type="button" className={`btn btn-sm ${modoCheckIn === 'reserva' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setModoCheckIn('reserva')}>Reserva</button>
+                  <button type="button" className={`btn btn-sm ${modoEntrada === 'inmediato' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setModoEntrada('inmediato')}>Ahora (Entrada)</button>
+                  <button type="button" className={`btn btn-sm ${modoEntrada === 'reserva' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setModoEntrada('reserva')}>Reserva</button>
                 </div>
               </label>
             </div>
-            <div className={`grid grid-cols-1 ${modoCheckIn === 'reserva' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
+            <div className={`grid grid-cols-1 ${modoEntrada === 'reserva' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
               <div>
                 <label className="label">Tipo Documento</label>
-                <select className="select select-bordered w-full" value={checkinData.tipoDocumento} onChange={e => setCheckinData({ ...checkinData, tipoDocumento: e.target.value })}>
+                <select className="select select-bordered w-full" value={datosEntrada.tipoDocumento} onChange={e => setDatosEntrada({ ...datosEntrada, tipoDocumento: e.target.value })}>
                   <option value="1">DNI</option>
                   <option value="7">Pasaporte</option>
                 </select>
                 <label className="label mt-2">Número Documento</label>
-                <input className="input input-bordered w-full" value={checkinData.documento} onChange={e => setCheckinData({ ...checkinData, documento: e.target.value })} />
+                <input className="input input-bordered w-full" value={datosEntrada.documento} onChange={e => setDatosEntrada({ ...datosEntrada, documento: e.target.value })} />
                 <label className="label mt-2">Nombres</label>
-                <input className="input input-bordered w-full" value={checkinData.nombres} onChange={e => setCheckinData({ ...checkinData, nombres: e.target.value })} />
+                <input className="input input-bordered w-full" value={datosEntrada.nombres} onChange={e => setDatosEntrada({ ...datosEntrada, nombres: e.target.value })} />
                 <label className="label mt-2">Apellidos</label>
-                <input className="input input-bordered w-full" value={checkinData.apellidos} onChange={e => setCheckinData({ ...checkinData, apellidos: e.target.value })} />
+                <input className="input input-bordered w-full" value={datosEntrada.apellidos} onChange={e => setDatosEntrada({ ...datosEntrada, apellidos: e.target.value })} />
                 <label className="label mt-2">Teléfono</label>
-                <input className="input input-bordered w-full" value={checkinData.telefono} onChange={e => setCheckinData({ ...checkinData, telefono: e.target.value })} />
+                <input className="input input-bordered w-full" value={datosEntrada.telefono} onChange={e => setDatosEntrada({ ...datosEntrada, telefono: e.target.value })} />
               </div>
-              <div className={modoCheckIn === 'reserva' ? 'md:col-span-2' : ''}>
-                {modoCheckIn === 'inmediato' ? (
+              <div className={modoEntrada === 'reserva' ? 'md:col-span-2' : ''}>
+                {modoEntrada === 'inmediato' ? (
                   <>
                     <label className="label">Fecha de salida</label>
-                    <DayPicker mode="single" selected={checkinData.fechaCheckoutPrevista ? new Date(checkinData.fechaCheckoutPrevista + 'T00:00:00') : undefined} onSelect={(date) => setCheckinData({ ...checkinData, fechaCheckoutPrevista: date ? format(date, 'yyyy-MM-dd') : '' })} captionLayout="dropdown" startMonth={new Date()} endMonth={new Date(2100, 11)} className="bg-base-100 p-2 rounded-lg shadow" />
+                    <DayPicker mode="single" selected={datosEntrada.fechaSalidaPrevista ? new Date(datosEntrada.fechaSalidaPrevista + 'T00:00:00') : undefined} onSelect={(date) => setDatosEntrada({ ...datosEntrada, fechaSalidaPrevista: date ? format(date, 'yyyy-MM-dd') : '' })} captionLayout="dropdown" startMonth={new Date()} endMonth={new Date(2100, 11)} className="bg-base-100 p-2 rounded-lg shadow" />
                   </>
                 ) : (
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <label className="label">Fecha de entrada</label>
-                      <DayPicker mode="single" selected={checkinData.fechaEntradaPrevista ? new Date(checkinData.fechaEntradaPrevista + 'T00:00:00') : undefined} onSelect={(date) => setCheckinData({ ...checkinData, fechaEntradaPrevista: date ? format(date, 'yyyy-MM-dd') : '' })} captionLayout="dropdown" startMonth={new Date()} endMonth={new Date(2100, 11)} className="bg-base-100 p-2 rounded-lg shadow" />
+                      <DayPicker mode="single" selected={datosEntrada.fechaEntradaPrevista ? new Date(datosEntrada.fechaEntradaPrevista + 'T00:00:00') : undefined} onSelect={(date) => setDatosEntrada({ ...datosEntrada, fechaEntradaPrevista: date ? format(date, 'yyyy-MM-dd') : '' })} captionLayout="dropdown" startMonth={new Date()} endMonth={new Date(2100, 11)} className="bg-base-100 p-2 rounded-lg shadow" />
                     </div>
                     <div className="divider divider-horizontal mx-0" />
                     <div className="flex-1">
                       <label className="label">Fecha de salida</label>
-                      <DayPicker mode="single" selected={checkinData.fechaCheckoutPrevista ? new Date(checkinData.fechaCheckoutPrevista + 'T00:00:00') : undefined} onSelect={(date) => setCheckinData({ ...checkinData, fechaCheckoutPrevista: date ? format(date, 'yyyy-MM-dd') : '' })} captionLayout="dropdown" startMonth={new Date()} endMonth={new Date(2100, 11)} className="bg-base-100 p-2 rounded-lg shadow" />
+                      <DayPicker mode="single" selected={datosEntrada.fechaSalidaPrevista ? new Date(datosEntrada.fechaSalidaPrevista + 'T00:00:00') : undefined} onSelect={(date) => setDatosEntrada({ ...datosEntrada, fechaSalidaPrevista: date ? format(date, 'yyyy-MM-dd') : '' })} captionLayout="dropdown" startMonth={new Date()} endMonth={new Date(2100, 11)} className="bg-base-100 p-2 rounded-lg shadow" />
                     </div>
                   </div>
                 )}
                 <label className="label mt-2">Método de Pago</label>
-                <select className="select select-bordered w-full" value={checkinData.metodoPago} onChange={e => setCheckinData({ ...checkinData, metodoPago: e.target.value })}>
+                <select className="select select-bordered w-full" value={datosEntrada.metodoPago} onChange={e => setDatosEntrada({ ...datosEntrada, metodoPago: e.target.value })}>
                   <option value="005">Efectivo</option>
                   <option value="006">Tarjeta</option>
                   <option value="008">Yape/Plin</option>
                 </select>
                 <label className="label cursor-pointer mt-2">
-                  <input type="checkbox" className="checkbox checkbox-primary" checked={checkinData.usarClienteAnonimo} onChange={e => setCheckinData({ ...checkinData, usarClienteAnonimo: e.target.checked })} />
+                  <input type="checkbox" className="checkbox checkbox-primary" checked={datosEntrada.usarClienteAnonimo} onChange={e => setDatosEntrada({ ...datosEntrada, usarClienteAnonimo: e.target.checked })} />
                   <span className="ml-2">Cliente anónimo (≤ S/700)</span>
                 </label>
               </div>
             </div>
             <div className="modal-action">
               <button className="btn btn-ghost" onClick={() => setModalAbierto(null)}>Cancelar</button>
-              <LoadingButton type="button" isLoading={cargandoAccion} onClick={modoCheckIn === 'inmediato' ? ejecutarCheckIn : ejecutarReserva}>
-                {modoCheckIn === 'inmediato' ? 'Confirmar Check‑In' : 'Crear Reserva'}
+              <LoadingButton type="button" isLoading={cargandoAccion} onClick={modoEntrada === 'inmediato' ? ejecutarEntrada : ejecutarReserva}>
+                {modoEntrada === 'inmediato' ? 'Confirmar Entrada' : 'Crear Reserva'}
               </LoadingButton>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Check‑Out */}
-      {modalAbierto === 'checkout' && habitacionSeleccionada && (
+      {/* Modal de Salida */}
+      {modalAbierto === 'salida' && habitacionSeleccionada && (
         <div className="modal modal-open modal-middle">
           <div className="modal-box max-w-[95vw] max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold mb-4"><DoorOpen className="inline mr-2" /> Check‑Out — Hab. {habitacionSeleccionada.numeroHabitacion}</h3>
+            <h3 className="text-lg font-bold mb-4"><DoorOpen className="inline mr-2" /> Salida — Hab. {habitacionSeleccionada.numeroHabitacion}</h3>
             <p>¿Confirmar la salida del cliente <strong>{habitacionSeleccionada.clienteHuesped || 'desconocido'}</strong>?</p>
             <p className="text-sm text-gray-500 mt-2">La habitación pasará a estado <strong>Limpieza</strong>.</p>
             <div className="modal-action">
               <button className="btn btn-ghost" onClick={() => setModalAbierto(null)}>Cancelar</button>
-              <LoadingButton type="button" isLoading={cargandoAccion} onClick={ejecutarCheckOut} className="btn-success">Confirmar Check‑Out</LoadingButton>
+              <LoadingButton type="button" isLoading={cargandoAccion} onClick={ejecutarSalida} className="btn-success">Confirmar Salida</LoadingButton>
             </div>
           </div>
         </div>
@@ -869,7 +926,7 @@ export default function HabitacionList() {
         <div className="modal modal-open modal-middle">
           <div className="modal-box max-w-[95vw] max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold mb-4">{modalAbierto === 'editar' ? 'Editar Habitación' : 'Nueva Habitación'}</h3>
-            <form onSubmit={handleSubmit(onSubmitAdmin)} noValidate>
+            <form onSubmit={handleSubmit(manejarEnvioAdmin)} noValidate>
               <div className="form-control mb-4">
                 <label className="label">Número de Habitación</label>
                 <input className={`input input-bordered ${errors.numeroHabitacion ? 'input-error' : ''}`} {...register('numeroHabitacion')} />

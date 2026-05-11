@@ -29,7 +29,7 @@ export default function HistorialEstancias() {
         columnHelper.accessor('numeroHabitacion', { header: 'Habitación', enableSorting: true }),
         columnHelper.accessor('clienteNombreCompleto', { header: 'Cliente', enableSorting: true }),
         columnHelper.accessor('fechaCheckin', {
-            header: 'Check‑In',
+            header: 'Entrada',
             enableSorting: true,
             cell: info => new Date(info.getValue()).toLocaleString('es-PE'),
         }),
