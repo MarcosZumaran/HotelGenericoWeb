@@ -9,17 +9,13 @@ export default function LoadingButton({
     return (
         <button
             type={type}
-            className={`btn btn-primary relative overflow-hidden ${className} ${isLoading ? 'pointer-events-none' : ''
-                }`}
+            className={`btn btn-primary relative overflow-hidden ${className} ${isLoading ? 'pointer-events-none opacity-80' : ''}`}
             disabled={disabled || isLoading}
             {...props}
         >
-            {/* Efecto de brillo sutil durante la carga */}
             {isLoading && (
                 <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
             )}
-
-            {/* Contenido */}
             <span className={`flex items-center gap-2 ${isLoading ? 'opacity-70' : ''}`}>
                 {isLoading ? (
                     <>

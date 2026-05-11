@@ -113,34 +113,63 @@ export default function Dashboard() {
   if (cargando) {
     return (
       <div className="flex justify-center items-center h-64">
-        <span className="loading loading-spinner loading-lg"></span>
+        <span className="loading loading-spinner loading-lg text-primary"></span>
       </div>
     );
   }
 
   const tarjetas = [
-    { titulo: 'Total Habitaciones', valor: datos.totalHabitaciones, icono: <Bed size={28} />, color: 'bg-primary text-primary-content' },
-    { titulo: 'Ocupadas', valor: datos.ocupadas, icono: <Users size={28} />, color: 'bg-warning text-warning-content' },
-    { titulo: 'Disponibles', valor: datos.disponibles, icono: <TrendingUp size={28} />, color: 'bg-success text-success-content' },
-    { titulo: 'Ingresos Hoy', valor: `S/ ${datos.ingresosHoy.toFixed(2)}`, icono: <DollarSign size={28} />, color: 'bg-info text-info-content' },
+    {
+      titulo: 'Total Habitaciones',
+      valor: datos.totalHabitaciones,
+      icono: <Bed size={28} />,
+      color: 'text-primary bg-primary/10',
+    },
+    {
+      titulo: 'Ocupadas',
+      valor: datos.ocupadas,
+      icono: <Users size={28} />,
+      color: 'text-warning bg-warning/10',
+    },
+    {
+      titulo: 'Disponibles',
+      valor: datos.disponibles,
+      icono: <TrendingUp size={28} />,
+      color: 'text-success bg-success/10',
+    },
+    {
+      titulo: 'Ingresos Hoy',
+      valor: `S/ ${datos.ingresosHoy.toFixed(2)}`,
+      icono: <DollarSign size={28} />,
+      color: 'text-info bg-info/10',
+    },
   ];
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-4">
-        Panel principal
-        <span className="text-lg font-normal text-gray-500 ml-2">— Bienvenido, {user?.username}</span>
-      </h2>
+      <h2 className="text-2xl font-bold mb-1">Panel principal</h2>
+      <p className="text-base-content/70 mb-6">Bienvenido, {user?.username}</p>
 
       {/* Tarjetas de resumen */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {tarjetas.map((tarjeta, idx) => (
-          <div key={idx} className={`card shadow-md ${tarjeta.color}`}>
-            <div className="card-body flex flex-row items-center gap-4">
-              <div className="flex-shrink-0">{tarjeta.icono}</div>
-              <div>
-                <h3 className="text-sm opacity-90">{tarjeta.titulo}</h3>
-                <p className="text-2xl font-bold">{tarjeta.valor}</p>
+          <div
+            key={idx}
+            className="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-shadow"
+          >
+            <div className="card-body p-5">
+              <div className="flex items-center gap-4">
+                <div className={`p-3 rounded-lg ${tarjeta.color}`}>
+                  {tarjeta.icono}
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-base-content/70">
+                    {tarjeta.titulo}
+                  </h3>
+                  <p className="text-2xl font-bold text-base-content mt-1">
+                    {tarjeta.valor}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -150,29 +179,33 @@ export default function Dashboard() {
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Gráfico de ocupación */}
-        <div className="card bg-base-100 shadow-md">
+        <div className="card bg-base-100 shadow-sm border border-base-200">
           <div className="card-body">
-            <h3 className="card-title mb-4">Ocupación actual</h3>
+            <h3 className="card-title text-lg font-semibold mb-4">
+              Ocupación actual
+            </h3>
             <div className="h-64 flex items-center justify-center">
               {datos.totalHabitaciones > 0 ? (
                 <Doughnut data={datosOcupacion} options={opcionesOcupacion} />
               ) : (
-                <p className="text-gray-500">Sin datos de ocupación</p>
+                <p className="text-base-content/50">Sin datos de ocupación</p>
               )}
             </div>
           </div>
         </div>
 
         {/* Gráfico de top productos */}
-        <div className="card bg-base-100 shadow-md">
+        <div className="card bg-base-100 shadow-sm border border-base-200">
           <div className="card-body">
-            <h3 className="card-title mb-4">Productos más consumidos (30 días)</h3>
+            <h3 className="card-title text-lg font-semibold mb-4">
+              Productos más consumidos (30 días)
+            </h3>
             <div className="h-64">
               {topProductos.length > 0 ? (
                 <Bar data={datosTopProductos} options={opcionesTopProductos} />
               ) : (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-gray-500">Sin datos de consumo</p>
+                  <p className="text-base-content/50">Sin datos de consumo</p>
                 </div>
               )}
             </div>
@@ -181,11 +214,13 @@ export default function Dashboard() {
       </div>
 
       {/* Tabla de estado de habitaciones */}
-      <div className="card bg-base-100 shadow-md">
+      <div className="card bg-base-100 shadow-sm border border-base-200">
         <div className="card-body">
-          <h3 className="card-title mb-4">Estado de Habitaciones</h3>
+          <h3 className="card-title text-lg font-semibold mb-4">
+            Estado de Habitaciones
+          </h3>
           <div className="overflow-x-auto">
-            <table className="table table-zebra">
+            <table className="table table-zebra w-full">
               <thead>
                 <tr>
                   <th>N°</th>
@@ -203,7 +238,11 @@ export default function Dashboard() {
                     <td>S/ {h.precioNoche.toFixed(2)}</td>
                     <td>
                       <span
-                        className={`badge ${h.estado === 'Disponible' ? 'badge-success' : h.estado === 'Ocupada' ? 'badge-warning' : 'badge-info'
+                        className={`badge ${h.estado === 'Disponible'
+                            ? 'badge-success'
+                            : h.estado === 'Ocupada'
+                              ? 'badge-warning'
+                              : 'badge-info'
                           }`}
                       >
                         {h.estado}

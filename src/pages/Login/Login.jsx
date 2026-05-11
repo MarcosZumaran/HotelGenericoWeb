@@ -121,10 +121,10 @@ export default function Login() {
   if (requiereSetup) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-base-200">
-        <div className="card w-full max-w-sm bg-base-100 shadow-xl">
+        <div className="card w-full max-w-sm bg-base-100 shadow-md border border-base-200">
           <div className="card-body">
             <h1 className="text-3xl font-bold text-center mb-2">{nombreHotel}</h1>
-            <p className="text-center text-sm text-gray-500 mb-6">
+            <p className="text-center text-sm text-base-content/50 mb-6">
               Cree el usuario administrador
             </p>
 
@@ -170,7 +170,7 @@ export default function Login() {
                 </label>
                 <input
                   type="password"
-                  placeholder="Repetí la contraseña"
+                  placeholder="Repita la contraseña"
                   className={`input input-bordered ${errorsSetup.confirmarPassword ? 'input-error' : ''}`}
                   {...registerSetup('confirmarPassword')}
                 />
@@ -198,10 +198,10 @@ export default function Login() {
   // Pantalla de login normal
   return (
     <div className="min-h-screen flex items-center justify-center bg-base-200">
-      <div className="card w-full max-w-sm bg-base-100 shadow-xl">
+      <div className="card w-full max-w-sm bg-base-100 shadow-md border border-base-200">
         <div className="card-body">
           <h1 className="text-3xl font-bold text-center mb-2">{nombreHotel}</h1>
-          <p className="text-center text-sm text-gray-500 mb-6">
+          <p className="text-center text-sm text-base-content/50 mb-6">
             Inicia sesión para continuar
           </p>
 

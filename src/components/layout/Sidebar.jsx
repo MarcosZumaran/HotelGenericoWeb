@@ -19,6 +19,26 @@ const menuItems = [
     { path: '/estancias/historial', label: 'Historial de Estancias', icon: DoorOpen, roles: ['Administrador', 'Recepcionista'] },
 ];
 
+function SidebarLink({ to, icon: Icon, label, isActive }) {
+    return (
+        <li>
+            <Link
+                to={to}
+                className={`
+                        flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
+                        ${isActive
+                        ? 'bg-primary/10 text-primary border-l-4 border-primary pl-3'
+                        : 'text-base-content/70 hover:bg-base-200 hover:text-base-content border-l-4 border-transparent pl-3'
+                    }
+        `}
+            >
+                <Icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
+                <span>{label}</span>
+            </Link>
+        </li>
+    );
+}
+
 export default function Sidebar() {
     const location = useLocation();
     const { user } = useAuth();
@@ -37,26 +57,36 @@ export default function Sidebar() {
     }, []);
 
     return (
-        <aside className="w-64 bg-base-100 min-h-screen p-4 shadow-xl">
-            <div className="mb-6 px-2">
-                <h1 className="text-2xl font-bold text-primary break-words">{nombreHotel}</h1>
-                <p className="text-xs text-gray-500 mt-1">{user?.nombreRol}</p>
+        <aside className="w-64 bg-base-100 border-r border-base-300 min-h-screen flex flex-col">
+            {/* Cabecera del Sidebar */}
+            <div className="px-5 pt-6 pb-4">
+                <h1 className="text-xl font-bold text-base-content leading-tight break-words">
+                    {nombreHotel}
+                </h1>
+                <p className="text-xs text-base-content/60 mt-1">{user?.nombreRol}</p>
             </div>
-            <ul className="menu menu-md gap-1">
-                {menuItems
-                    .filter(item => item.roles.includes(user?.nombreRol || ''))
-                    .map(item => (
-                        <li key={item.path}>
-                            <Link
+
+            {/* Menú de navegación */}
+            <nav className="flex-1 px-3">
+                <ul className="space-y-1">
+                    {menuItems
+                        .filter(item => item.roles.includes(user?.nombreRol || ''))
+                        .map(item => (
+                            <SidebarLink
+                                key={item.path}
                                 to={item.path}
-                                className={location.pathname === item.path ? 'active' : ''}
-                            >
-                                <item.icon size={20} />
-                                {item.label}
-                            </Link>
-                        </li>
-                    ))}
-            </ul>
+                                icon={item.icon}
+                                label={item.label}
+                                isActive={location.pathname === item.path}
+                            />
+                        ))}
+                </ul>
+            </nav>
+
+            {/* Footer */}
+            <div className="px-5 pb-4 pt-2 border-t border-base-200">
+                <p className="text-xs text-base-content/50">HotelGenérico v1.0</p>
+            </div>
         </aside>
     );
 }

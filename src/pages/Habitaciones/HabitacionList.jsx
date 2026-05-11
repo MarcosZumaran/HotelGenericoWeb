@@ -19,12 +19,12 @@ import {
 } from 'lucide-react';
 import useSignalR from '../../hooks/useSignalR';
 
-// Estilos de fondo para cada estado
+// Estilos de fondo y borde para cada estado
 const estilosCarta = {
-  1: 'bg-success/10 border-success/40 hover:bg-success/20',
-  2: 'bg-warning/10 border-warning/40 hover:bg-warning/20',
-  3: 'bg-info/10 border-info/40 hover:bg-info/20',
-  4: 'bg-error/10 border-error/40 hover:bg-error/20',
+  1: 'bg-success/10 border-success/30 hover:bg-success/20 hover:border-success/50',
+  2: 'bg-warning/10 border-warning/30 hover:bg-warning/20 hover:border-warning/50',
+  3: 'bg-info/10 border-info/30 hover:bg-info/20 hover:border-info/50',
+  4: 'bg-error/10 border-error/30 hover:bg-error/20 hover:border-error/50',
 };
 
 const coloresInsignia = {
@@ -33,6 +33,9 @@ const coloresInsignia = {
   3: 'badge-info',
   4: 'badge-error',
 };
+
+// Pequeña animación de aparición para las tarjetas
+const cardAnimation = "animate-[fadeInScale_0.2s_ease-out]";
 
 export default function HabitacionList() {
   const { user } = useAuth();
@@ -152,7 +155,6 @@ export default function HabitacionList() {
     }
   };
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     cargarDatos();
   }, []);
@@ -353,17 +355,21 @@ export default function HabitacionList() {
   if (cargando) {
     return (
       <div className="flex justify-center items-center h-64">
-        <span className="loading loading-spinner loading-lg"></span>
+        <span className="loading loading-spinner loading-lg text-primary"></span>
       </div>
     );
   }
 
   return (
     <div>
+      {/* Cabecera */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold">Habitaciones</h2>
+        <div>
+          <h2 className="text-2xl font-bold">Habitaciones</h2>
+          <p className="text-sm text-base-content/60 mt-1">Gestioná el estado y las operaciones de las habitaciones</p>
+        </div>
         {esAdmin && (
-          <button className="btn btn-primary" onClick={abrirModalCrear}>
+          <button className="btn btn-primary gap-2" onClick={abrirModalCrear}>
             <Plus size={20} /> Nueva Habitación
           </button>
         )}
@@ -374,7 +380,7 @@ export default function HabitacionList() {
         {habitaciones.map((h) => (
           <div
             key={h.idHabitacion}
-            className={`card border-2 ${estilosCarta[h.idEstado] || 'bg-base-200 border-base-300'} shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer`}
+            className={`card border-2 ${estilosCarta[h.idEstado] || 'bg-base-200 border-base-300'} shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${cardAnimation} group`}
             onClick={() => {
               setHabitacionSeleccionada(h);
               setModalAbierto('detalle');
@@ -390,33 +396,42 @@ export default function HabitacionList() {
           >
             <div className="card-body p-4">
               <div className="flex justify-between items-start mb-2">
-                <h3 className="text-2xl font-bold">{h.numeroHabitacion}</h3>
+                <h3 className="text-2xl font-bold text-base-content group-hover:text-primary transition-colors">
+                  {h.numeroHabitacion}
+                </h3>
                 <span className={`badge ${coloresInsignia[h.idEstado] || 'badge-ghost'}`}>{h.nombreEstado}</span>
               </div>
-              <p className="text-sm mb-1"><Layers size={14} className="inline mr-1" />{h.nombreTipo}</p>
-              <p className="text-sm mb-1"><Hash size={14} className="inline mr-1" />Piso: {h.piso ?? '—'}</p>
-              <p className="text-lg font-bold mt-auto"><DollarSign size={16} className="inline mr-1" />S/ {h.precioNoche.toFixed(2)}</p>
-              {h.clienteHuesped && <p className="text-xs text-gray-500 mt-1 truncate">👤 {h.clienteHuesped}</p>}
+              <p className="text-sm mb-1 flex items-center gap-1 text-base-content/80"><Layers size={14} /> {h.nombreTipo}</p>
+              <p className="text-sm mb-1 flex items-center gap-1 text-base-content/80"><Hash size={14} /> Piso: {h.piso ?? '—'}</p>
+              <p className="text-lg font-bold mt-auto flex items-center gap-1 text-base-content"><DollarSign size={16} /> S/ {h.precioNoche.toFixed(2)}</p>
+              {h.clienteHuesped && <p className="text-xs text-base-content/50 mt-1 truncate">👤 {h.clienteHuesped}</p>}
             </div>
           </div>
         ))}
       </div>
 
       {habitaciones.length === 0 && (
-        <div className="text-center text-gray-500 py-16">No hay habitaciones registradas.</div>
+        <div className="text-center text-base-content/50 py-16">No hay habitaciones registradas.</div>
       )}
 
-      {/* Modal de detalle */}
+      {/* ──────────────── MODAL DE DETALLE ──────────────── */}
       {modalAbierto === 'detalle' && habitacionSeleccionada && (
         <div className="modal modal-open modal-middle">
-          <div className="modal-box w-full max-w-[95vw] h-[95vh] bg-base-100/80 backdrop-blur-xl shadow-2xl border border-base-300 rounded-2xl p-0 flex flex-col">
-            {/* Cabecera con degradado */}
-            <div className="relative bg-gradient-to-r from-primary/20 via-primary/10 to-primary/5 p-6 rounded-t-2xl border-b border-base-300 flex-shrink-0">
+          <div className={`modal-box w-full max-h-[95vh] overflow-y-auto bg-base-100/90 backdrop-blur-xl shadow-2xl border border-base-300 rounded-2xl p-0 flex flex-col ${(habitacionSeleccionada.idEstanciaActiva || reservas.length > 0)
+            ? 'max-w-[95vw] h-[90vh]'
+            : 'max-w-3xl'
+            }`}>
+            {/* Cabecera con degradado sutil basado en el estado */}
+            <div className={`relative p-6 rounded-t-2xl border-b border-base-300 flex-shrink-0 ${habitacionSeleccionada.idEstado === 1 ? 'bg-success/10' :
+              habitacionSeleccionada.idEstado === 2 ? 'bg-warning/10' :
+                habitacionSeleccionada.idEstado === 3 ? 'bg-info/10' :
+                  'bg-error/10'
+              }`}>
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+                  <h3 className="text-2xl font-bold tracking-tight flex items-center gap-2 text-base-content">
                     <span className="text-3xl">{habitacionSeleccionada.numeroHabitacion}</span>
-                    <span className="text-lg font-normal text-base-content/70">— {habitacionSeleccionada.nombreTipo}</span>
+                    <span className="text-lg font-normal text-base-content/60">— {habitacionSeleccionada.nombreTipo}</span>
                   </h3>
                   <div className="flex items-center gap-3 mt-2">
                     <span className={`badge badge-lg ${coloresInsignia[habitacionSeleccionada.idEstado] || 'badge-ghost'}`}>
@@ -438,8 +453,11 @@ export default function HabitacionList() {
               </div>
             </div>
 
-            {/* Cuerpo con flex-1 para ocupar el espacio restante */}
-            <div className="flex-1 overflow-y-auto p-8 flex flex-col lg:grid lg:grid-cols-2 gap-8 pb-24">
+            {/* Cuerpo con scroll y grid condicional */}
+            <div className={`flex-1 overflow-y-auto p-8 flex flex-col gap-8 pb-24 ${(habitacionSeleccionada.idEstanciaActiva || reservas.length > 0)
+              ? 'lg:grid lg:grid-cols-2'
+              : ''
+              }`}>
               {/* Columna izquierda: datos y acciones */}
               <div className="space-y-6">
                 {/* Información de la habitación */}
@@ -447,11 +465,11 @@ export default function HabitacionList() {
                   <div className="card-body p-4">
                     <h4 className="card-title text-base mb-2">Información</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="flex items-center gap-2 text-sm">
+                      <div className="flex items-center gap-2 text-sm text-base-content/80">
                         <Hash size={18} className="text-primary" />
                         <span>Piso {habitacionSeleccionada.piso ?? '—'}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
+                      <div className="flex items-center gap-2 text-sm text-base-content/80">
                         <DollarSign size={18} className="text-success" />
                         <span>S/ {habitacionSeleccionada.precioNoche.toFixed(2)} / noche</span>
                       </div>
@@ -465,20 +483,16 @@ export default function HabitacionList() {
                   </div>
                 </div>
 
-                {/* Estancia activa (fechas y duración) */}
+                {/* Estancia activa */}
                 {estanciaActiva && (
                   <div className="card bg-base-200/50 border border-base-300 shadow-sm">
                     <div className="card-body p-4">
                       <h4 className="card-title text-base mb-2">Estancia Activa</h4>
                       <div className="space-y-2">
-                        <p className="text-sm"><strong>Cliente:</strong> {estanciaActiva.clienteNombreCompleto}</p>
-                        <div className="flex items-center justify-between text-sm">
-                          <span>
-                            <strong>Entrada:</strong> {format(new Date(estanciaActiva.fechaCheckin), 'dd/MM/yy')}
-                          </span>
-                          <span>
-                            <strong>Salida:</strong> {format(new Date(estanciaActiva.fechaCheckoutPrevista), 'dd/MM/yy')}
-                          </span>
+                        <p className="text-sm text-base-content/90"><strong>Cliente:</strong> {estanciaActiva.clienteNombreCompleto}</p>
+                        <div className="flex items-center justify-between text-sm text-base-content/80">
+                          <span><strong>Entrada:</strong> {format(new Date(estanciaActiva.fechaCheckin), 'dd/MM/yy')}</span>
+                          <span><strong>Salida:</strong> {format(new Date(estanciaActiva.fechaCheckoutPrevista), 'dd/MM/yy')}</span>
                         </div>
                         <div className="mt-2">
                           <progress
@@ -510,11 +524,11 @@ export default function HabitacionList() {
                     <div className="flex flex-wrap gap-2">
                       {esAdmin && (
                         <>
-                          <button className="btn btn-outline btn-sm" onClick={() => abrirModalEditar(habitacionSeleccionada)}>
+                          <button className="btn btn-outline btn-sm gap-1" onClick={() => abrirModalEditar(habitacionSeleccionada)}>
                             <Edit size={16} /> Editar
                           </button>
                           <button
-                            className="btn btn-outline btn-sm text-error border-error hover:bg-error/10"
+                            className="btn btn-outline btn-sm text-error border-error hover:bg-error/10 gap-1"
                             onClick={() => eliminarHabitacion(habitacionSeleccionada.idHabitacion)}
                           >
                             <Trash2 size={16} /> Eliminar
@@ -532,15 +546,11 @@ export default function HabitacionList() {
                         return (
                           <button
                             key={accion}
-                            className={`btn btn-sm ${accion === 'CheckIn'
-                              ? 'btn-primary'
-                              : accion === 'CheckOut' || accion === 'PasarLimpieza'
-                                ? 'btn-success'
-                                : accion === 'Mantenimiento'
-                                  ? 'btn-warning'
-                                  : accion === 'FinalizarLimpieza'
-                                    ? 'btn-info'
-                                    : 'btn-primary'
+                            className={`btn btn-sm gap-1 ${accion === 'CheckIn' ? 'btn-primary' :
+                              accion === 'CheckOut' || accion === 'PasarLimpieza' ? 'btn-success' :
+                                accion === 'Mantenimiento' ? 'btn-warning' :
+                                  accion === 'FinalizarLimpieza' ? 'btn-info' :
+                                    'btn-primary'
                               }`}
                             onClick={() => ejecutarAccion(accion)}
                             disabled={cambiandoEstado === habitacionSeleccionada.idHabitacion}
@@ -551,7 +561,7 @@ export default function HabitacionList() {
                             {accion === 'Mantenimiento' && <Wrench size={16} />}
                             {accion === 'FinalizarLimpieza' && <CheckCircle size={16} />}
                             {accion === 'Habilitar' && <RotateCcw size={16} />}
-                            <span className="ml-1">{etiqueta}</span>
+                            {etiqueta}
                           </button>
                         );
                       })}
@@ -560,240 +570,242 @@ export default function HabitacionList() {
                 </div>
               </div>
 
-              {/* Columna derecha: consumos y calendario */}
-              <div className="space-y-6 flex flex-col">
-                {/* Consumos */}
-                {habitacionSeleccionada.idEstanciaActiva && (
-                  <div className="card bg-base-200/50 border border-base-300 shadow-sm">
-                    <div className="card-body p-4">
-                      <h4 className="card-title text-base mb-2">
-                        <ShoppingCart size={18} className="text-warning" /> Consumos
-                      </h4>
+              {/* Columna derecha: solo si hay consumos o reservas */}
+              {(habitacionSeleccionada.idEstanciaActiva || reservas.length > 0) && (
+                <div className="space-y-6 flex flex-col">
+                  {/* Consumos */}
+                  {habitacionSeleccionada.idEstanciaActiva && (
+                    <div className="card bg-base-200/50 border border-base-300 shadow-sm">
+                      <div className="card-body p-4">
+                        <h4 className="card-title text-base mb-2">
+                          <ShoppingCart size={18} className="text-warning" /> Consumos
+                        </h4>
 
-                      <div className="flex gap-2 items-end mb-4">
-                        <div className="form-control flex-1">
-                          <label className="label py-1">
-                            <span className="label-text text-xs">Producto</span>
-                          </label>
-                          <select
-                            className="select select-bordered select-sm w-full"
-                            value={productoSeleccionado}
-                            onChange={(e) => setProductoSeleccionado(e.target.value)}
+                        <div className="flex gap-2 items-end mb-4">
+                          <div className="form-control flex-1">
+                            <label className="label py-1">
+                              <span className="label-text text-xs">Producto</span>
+                            </label>
+                            <select
+                              className="select select-bordered select-sm w-full"
+                              value={productoSeleccionado}
+                              onChange={(e) => setProductoSeleccionado(e.target.value)}
+                            >
+                              <option value="">Seleccionar producto</option>
+                              {productos.map((p) => (
+                                <option key={p.idProducto} value={p.idProducto}>
+                                  {p.nombre} (S/ {p.precioUnitario.toFixed(2)})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="form-control w-24">
+                            <label className="label py-1">
+                              <span className="label-text text-xs">Cantidad</span>
+                            </label>
+                            <input
+                              type="number"
+                              className="input input-bordered input-sm w-full"
+                              min="1"
+                              value={cantidadConsumo}
+                              onChange={(e) => setCantidadConsumo(parseInt(e.target.value) || 1)}
+                            />
+                          </div>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={agregarConsumo}
+                            disabled={agregandoConsumo}
                           >
-                            <option value="">Seleccionar producto</option>
-                            {productos.map((p) => (
-                              <option key={p.idProducto} value={p.idProducto}>
-                                {p.nombre} (S/ {p.precioUnitario.toFixed(2)})
-                              </option>
-                            ))}
-                          </select>
+                            {agregandoConsumo ? (
+                              <span className="loading loading-spinner loading-xs"></span>
+                            ) : (
+                              <Plus size={16} />
+                            )}
+                          </button>
                         </div>
-                        <div className="form-control w-24">
-                          <label className="label py-1">
-                            <span className="label-text text-xs">Cantidad</span>
-                          </label>
-                          <input
-                            type="number"
-                            className="input input-bordered input-sm w-full"
-                            min="1"
-                            value={cantidadConsumo}
-                            onChange={(e) => setCantidadConsumo(parseInt(e.target.value) || 1)}
+
+                        {consumos.length > 0 && (
+                          <div className="overflow-x-auto mt-3">
+                            <table className="table table-zebra table-sm">
+                              <thead>
+                                <tr>
+                                  <th>Producto</th>
+                                  <th>Cant.</th>
+                                  <th>P.U.</th>
+                                  <th>Subtotal</th>
+                                  <th className="w-24">Acciones</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {consumos.map((c) => (
+                                  <tr key={c.idItem}>
+                                    <td>{c.nombreProducto}</td>
+                                    <td>
+                                      {idEditando === c.idItem ? (
+                                        <div className="flex items-center gap-1">
+                                          <input
+                                            type="number"
+                                            className="input input-bordered input-xs w-16"
+                                            value={editarCantidad}
+                                            min="1"
+                                            onChange={(e) => setEditarCantidad(parseInt(e.target.value) || 1)}
+                                          />
+                                          <button
+                                            className="btn btn-ghost btn-xs text-success"
+                                            onClick={async () => {
+                                              if (editarCantidad < 1) return;
+                                              try {
+                                                await api.put(`/Estancia/${habitacionSeleccionada.idEstanciaActiva}/consumo/${c.idItem}`, {
+                                                  cantidad: editarCantidad,
+                                                });
+                                                swal.fire('Actualizado', 'Consumo modificado', 'success');
+                                                cargarConsumos(habitacionSeleccionada.idEstanciaActiva);
+                                                cargarDetalleEstancia(habitacionSeleccionada.idEstanciaActiva);
+                                                cargarDatos();
+                                                setIdEditando(null);
+                                              } catch (err) {
+                                                swal.fire('Error', err.response?.data?.mensaje || 'Error al actualizar', 'error');
+                                              }
+                                            }}
+                                          >
+                                            <CheckCircle size={14} />
+                                          </button>
+                                          <button
+                                            className="btn btn-ghost btn-xs"
+                                            onClick={() => setIdEditando(null)}
+                                          >
+                                            ✕
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        c.cantidad
+                                      )}
+                                    </td>
+                                    <td>S/ {c.precioUnitario.toFixed(2)}</td>
+                                    <td className="font-semibold">S/ {c.subtotal.toFixed(2)}</td>
+                                    <td>
+                                      {idEditando !== c.idItem && (
+                                        <div className="flex gap-1">
+                                          <button
+                                            className="btn btn-ghost btn-xs"
+                                            onClick={() => {
+                                              setIdEditando(c.idItem);
+                                              setEditarCantidad(c.cantidad);
+                                            }}
+                                            title="Editar"
+                                          >
+                                            <Edit size={14} />
+                                          </button>
+                                          <button
+                                            className="btn btn-ghost btn-xs text-error"
+                                            disabled={idEliminando === c.idItem}
+                                            onClick={async () => {
+                                              const confirmacion = await swal.fire({
+                                                title: '¿Eliminar consumo?',
+                                                text: 'Esta acción no se puede deshacer',
+                                                icon: 'warning',
+                                                showCancelButton: true,
+                                                confirmButtonColor: '#d33',
+                                                confirmButtonText: 'Sí, eliminar',
+                                                cancelButtonText: 'Cancelar',
+                                              });
+                                              if (!confirmacion.isConfirmed) return;
+                                              setIdEliminando(c.idItem);
+                                              try {
+                                                await api.delete(`/Estancia/${habitacionSeleccionada.idEstanciaActiva}/consumo/${c.idItem}`);
+                                                swal.fire('Eliminado', 'El consumo fue eliminado', 'success');
+                                                cargarConsumos(habitacionSeleccionada.idEstanciaActiva);
+                                                cargarDetalleEstancia(habitacionSeleccionada.idEstanciaActiva);
+                                                cargarDatos();
+                                              } catch (err) {
+                                                swal.fire('Error', err.response?.data?.mensaje || 'Error al eliminar', 'error');
+                                              } finally {
+                                                setIdEliminando(null);
+                                              }
+                                            }}
+                                            title="Eliminar"
+                                          >
+                                            {idEliminando === c.idItem ? (
+                                              <span className="loading loading-spinner loading-xs"></span>
+                                            ) : (
+                                              <Trash2 size={14} />
+                                            )}
+                                          </button>
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        {consumos.length === 0 && (
+                          <p className="text-xs text-base-content/50 italic">Sin consumos registrados.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Calendario de reservas */}
+                  {reservas.length > 0 && (
+                    <div className="card bg-base-200/50 border border-base-300 shadow-sm flex-1">
+                      <div className="card-body p-4 flex flex-col">
+                        <h4 className="card-title text-base mb-2">Reservas</h4>
+                        <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-base-300 bg-base-100">
+                          <FullCalendar
+                            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                            initialView="dayGridMonth"
+                            headerToolbar={{
+                              left: 'prev,next today',
+                              center: 'title',
+                              right: 'dayGridMonth,timeGridWeek,timeGridDay',
+                            }}
+                            events={reservas}
+                            height="100%"
+                            locale="es"
+                            buttonText={{
+                              today: 'Hoy',
+                              month: 'Mes',
+                              week: 'Semana',
+                              day: 'Día',
+                            }}
+                            eventMouseEnter={(info) => {
+                              const rect = info.el.getBoundingClientRect();
+                              const { idReserva, cliente, entrada, salida, monto, estado } = info.event.extendedProps;
+                              setTooltip({
+                                visible: true,
+                                x: rect.left + window.scrollX + rect.width / 2,
+                                y: rect.top + window.scrollY - 10,
+                                contenido: {
+                                  idReserva,
+                                  cliente,
+                                  entrada: new Date(entrada).toLocaleDateString('es-PE'),
+                                  salida: new Date(salida).toLocaleDateString('es-PE'),
+                                  monto,
+                                  estado
+                                }
+                              });
+                            }}
+                            eventMouseLeave={() => {
+                              setTooltip({ visible: false, contenido: null, x: 0, y: 0 });
+                            }}
                           />
                         </div>
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={agregarConsumo}
-                          disabled={agregandoConsumo}
-                        >
-                          {agregandoConsumo ? (
-                            <span className="loading loading-spinner loading-xs"></span>
-                          ) : (
-                            <Plus size={16} />
-                          )}
-                        </button>
-                      </div>
-
-                      {consumos.length > 0 && (
-                        <div className="overflow-x-auto mt-3">
-                          <table className="table table-zebra table-sm">
-                            <thead>
-                              <tr>
-                                <th>Producto</th>
-                                <th>Cant.</th>
-                                <th>P.U.</th>
-                                <th>Subtotal</th>
-                                <th className="w-24">Acciones</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {consumos.map((c) => (
-                                <tr key={c.idItem}>
-                                  <td>{c.nombreProducto}</td>
-                                  <td>
-                                    {idEditando === c.idItem ? (
-                                      <div className="flex items-center gap-1">
-                                        <input
-                                          type="number"
-                                          className="input input-bordered input-xs w-16"
-                                          value={editarCantidad}
-                                          min="1"
-                                          onChange={(e) => setEditarCantidad(parseInt(e.target.value) || 1)}
-                                        />
-                                        <button
-                                          className="btn btn-ghost btn-xs text-success"
-                                          onClick={async () => {
-                                            if (editarCantidad < 1) return;
-                                            try {
-                                              await api.put(`/Estancia/${habitacionSeleccionada.idEstanciaActiva}/consumo/${c.idItem}`, {
-                                                cantidad: editarCantidad,
-                                              });
-                                              swal.fire('Actualizado', 'Consumo modificado', 'success');
-                                              cargarConsumos(habitacionSeleccionada.idEstanciaActiva);
-                                              cargarDetalleEstancia(habitacionSeleccionada.idEstanciaActiva);
-                                              cargarDatos();
-                                              setIdEditando(null);
-                                            } catch (err) {
-                                              swal.fire('Error', err.response?.data?.mensaje || 'Error al actualizar', 'error');
-                                            }
-                                          }}
-                                        >
-                                          <CheckCircle size={14} />
-                                        </button>
-                                        <button
-                                          className="btn btn-ghost btn-xs"
-                                          onClick={() => setIdEditando(null)}
-                                        >
-                                          ✕
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      c.cantidad
-                                    )}
-                                  </td>
-                                  <td>S/ {c.precioUnitario.toFixed(2)}</td>
-                                  <td className="font-semibold">S/ {c.subtotal.toFixed(2)}</td>
-                                  <td>
-                                    {idEditando !== c.idItem && (
-                                      <div className="flex gap-1">
-                                        <button
-                                          className="btn btn-ghost btn-xs"
-                                          onClick={() => {
-                                            setIdEditando(c.idItem);
-                                            setEditarCantidad(c.cantidad);
-                                          }}
-                                          title="Editar"
-                                        >
-                                          <Edit size={14} />
-                                        </button>
-                                        <button
-                                          className="btn btn-ghost btn-xs text-error"
-                                          disabled={idEliminando === c.idItem}
-                                          onClick={async () => {
-                                            const confirmacion = await swal.fire({
-                                              title: '¿Eliminar consumo?',
-                                              text: 'Esta acción no se puede deshacer',
-                                              icon: 'warning',
-                                              showCancelButton: true,
-                                              confirmButtonColor: '#d33',
-                                              confirmButtonText: 'Sí, eliminar',
-                                              cancelButtonText: 'Cancelar',
-                                            });
-                                            if (!confirmacion.isConfirmed) return;
-                                            setIdEliminando(c.idItem);
-                                            try {
-                                              await api.delete(`/Estancia/${habitacionSeleccionada.idEstanciaActiva}/consumo/${c.idItem}`);
-                                              swal.fire('Eliminado', 'El consumo fue eliminado', 'success');
-                                              cargarConsumos(habitacionSeleccionada.idEstanciaActiva);
-                                              cargarDetalleEstancia(habitacionSeleccionada.idEstanciaActiva);
-                                              cargarDatos();
-                                            } catch (err) {
-                                              swal.fire('Error', err.response?.data?.mensaje || 'Error al eliminar', 'error');
-                                            } finally {
-                                              setIdEliminando(null);
-                                            }
-                                          }}
-                                          title="Eliminar"
-                                        >
-                                          {idEliminando === c.idItem ? (
-                                            <span className="loading loading-spinner loading-xs"></span>
-                                          ) : (
-                                            <Trash2 size={14} />
-                                          )}
-                                        </button>
-                                      </div>
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-
-                      {consumos.length === 0 && (
-                        <p className="text-xs text-base-content/50 italic">Sin consumos registrados.</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Calendario de reservas */}
-                {reservas.length > 0 && (
-                  <div className="card bg-base-200/50 border border-base-300 shadow-sm flex-1">
-                    <div className="card-body p-4 flex flex-col">
-                      <h4 className="card-title text-base mb-2">Reservas</h4>
-                      <div className="flex-1 min-h-0 rounded-xl overflow-hidden border border-base-300 shadow-inner">
-                        <FullCalendar
-                          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                          initialView="dayGridMonth"
-                          headerToolbar={{
-                            left: 'prev,next today',
-                            center: 'title',
-                            right: 'dayGridMonth,timeGridWeek,timeGridDay',
-                          }}
-                          events={reservas}
-                          height="100%"
-                          locale="es"
-                          buttonText={{
-                            today: 'Hoy',
-                            month: 'Mes',
-                            week: 'Semana',
-                            day: 'Día',
-                          }}
-                          eventMouseEnter={(info) => {
-                            const rect = info.el.getBoundingClientRect();
-                            const { idReserva, cliente, entrada, salida, monto, estado } = info.event.extendedProps;
-                            setTooltip({
-                              visible: true,
-                              x: rect.left + window.scrollX + rect.width / 2,
-                              y: rect.top + window.scrollY - 10,
-                              contenido: {
-                                idReserva,
-                                cliente,
-                                entrada: new Date(entrada).toLocaleDateString('es-PE'),
-                                salida: new Date(salida).toLocaleDateString('es-PE'),
-                                monto,
-                                estado
-                              }
-                            });
-                          }}
-                          eventMouseLeave={() => {
-                            setTooltip({ visible: false, contenido: null, x: 0, y: 0 });
-                          }}
-                        />
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Pie con total acumulado */}
             {estanciaActiva && (
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-base-100/90 backdrop-blur-xl border-t border-base-300 rounded-b-2xl z-10">
+              <div className="sticky bottom-0 left-0 right-0 p-4 bg-base-100/95 backdrop-blur-xl border-t border-base-300 rounded-b-2xl z-10">
                 <div className="flex justify-between items-center max-w-[95vw] mx-auto px-4">
                   <div className="flex items-center gap-4">
-                    <span className="font-semibold">Total Estancia:</span>
+                    <span className="font-semibold text-base-content">Total Estancia:</span>
                     <span className="text-lg font-bold text-success">
                       S/ {estanciaActiva.montoTotal.toFixed(2)}
                     </span>
@@ -810,7 +822,7 @@ export default function HabitacionList() {
             {/* Tooltip flotante del calendario */}
             {tooltip.visible && tooltip.contenido && (
               <div
-                className="fixed z-[9999] pointer-events-none"
+                className="fixed z-[9999] pointer-events-none animate-[fadeIn_0.15s_ease-out]"
                 style={{ left: tooltip.x, top: tooltip.y, transform: 'translate(-50%, -100%)' }}
               >
                 <div className="card bg-base-100 shadow-xl border border-base-300 p-3 rounded-xl text-sm min-w-[200px]">
@@ -831,12 +843,12 @@ export default function HabitacionList() {
         </div>
       )}
 
-      {/* Modal de Entrada */}
+      {/* ──────────────── MODAL DE ENTRADA ──────────────── */}
       {modalAbierto === 'entrada' && habitacionSeleccionada && (
         <div className="modal modal-open modal-middle">
-          <div className={`modal-box w-full overflow-x-hidden max-w-[95vw] max-h-[90vh] overflow-y-auto ${modoEntrada === 'reserva' ? 'md:max-w-5xl' : 'md:max-w-3xl'}`}>
-            <h3 className="text-lg font-bold mb-4">
-              <UserPlus className="inline mr-2" />
+          <div className={`modal-box w-full overflow-x-hidden max-w-[95vw] max-h-[90vh] overflow-y-auto bg-base-100 border border-base-200 ${modoEntrada === 'reserva' ? 'md:max-w-5xl' : 'md:max-w-3xl'}`}>
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+              <UserPlus />
               {modoEntrada === 'inmediato' ? 'Entrada' : 'Nueva Reserva'}
               {' — Hab. ' + habitacionSeleccionada.numeroHabitacion}
             </h3>
@@ -869,18 +881,18 @@ export default function HabitacionList() {
                 {modoEntrada === 'inmediato' ? (
                   <>
                     <label className="label">Fecha de salida</label>
-                    <DayPicker mode="single" selected={datosEntrada.fechaSalidaPrevista ? new Date(datosEntrada.fechaSalidaPrevista + 'T00:00:00') : undefined} onSelect={(date) => setDatosEntrada({ ...datosEntrada, fechaSalidaPrevista: date ? format(date, 'yyyy-MM-dd') : '' })} captionLayout="dropdown" startMonth={new Date()} endMonth={new Date(2100, 11)} className="bg-base-100 p-2 rounded-lg shadow" />
+                    <DayPicker mode="single" selected={datosEntrada.fechaSalidaPrevista ? new Date(datosEntrada.fechaSalidaPrevista + 'T00:00:00') : undefined} onSelect={(date) => setDatosEntrada({ ...datosEntrada, fechaSalidaPrevista: date ? format(date, 'yyyy-MM-dd') : '' })} captionLayout="dropdown" startMonth={new Date()} endMonth={new Date(2100, 11)} className="bg-base-100 p-2 rounded-lg shadow-sm border border-base-300" />
                   </>
                 ) : (
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <label className="label">Fecha de entrada</label>
-                      <DayPicker mode="single" selected={datosEntrada.fechaEntradaPrevista ? new Date(datosEntrada.fechaEntradaPrevista + 'T00:00:00') : undefined} onSelect={(date) => setDatosEntrada({ ...datosEntrada, fechaEntradaPrevista: date ? format(date, 'yyyy-MM-dd') : '' })} captionLayout="dropdown" startMonth={new Date()} endMonth={new Date(2100, 11)} className="bg-base-100 p-2 rounded-lg shadow" />
+                      <DayPicker mode="single" selected={datosEntrada.fechaEntradaPrevista ? new Date(datosEntrada.fechaEntradaPrevista + 'T00:00:00') : undefined} onSelect={(date) => setDatosEntrada({ ...datosEntrada, fechaEntradaPrevista: date ? format(date, 'yyyy-MM-dd') : '' })} captionLayout="dropdown" startMonth={new Date()} endMonth={new Date(2100, 11)} className="bg-base-100 p-2 rounded-lg shadow-sm border border-base-300" />
                     </div>
                     <div className="divider divider-horizontal mx-0" />
                     <div className="flex-1">
                       <label className="label">Fecha de salida</label>
-                      <DayPicker mode="single" selected={datosEntrada.fechaSalidaPrevista ? new Date(datosEntrada.fechaSalidaPrevista + 'T00:00:00') : undefined} onSelect={(date) => setDatosEntrada({ ...datosEntrada, fechaSalidaPrevista: date ? format(date, 'yyyy-MM-dd') : '' })} captionLayout="dropdown" startMonth={new Date()} endMonth={new Date(2100, 11)} className="bg-base-100 p-2 rounded-lg shadow" />
+                      <DayPicker mode="single" selected={datosEntrada.fechaSalidaPrevista ? new Date(datosEntrada.fechaSalidaPrevista + 'T00:00:00') : undefined} onSelect={(date) => setDatosEntrada({ ...datosEntrada, fechaSalidaPrevista: date ? format(date, 'yyyy-MM-dd') : '' })} captionLayout="dropdown" startMonth={new Date()} endMonth={new Date(2100, 11)} className="bg-base-100 p-2 rounded-lg shadow-sm border border-base-300" />
                     </div>
                   </div>
                 )}
@@ -906,13 +918,13 @@ export default function HabitacionList() {
         </div>
       )}
 
-      {/* Modal de Salida */}
+      {/* ──────────────── MODAL DE SALIDA ──────────────── */}
       {modalAbierto === 'salida' && habitacionSeleccionada && (
         <div className="modal modal-open modal-middle">
-          <div className="modal-box max-w-[95vw] max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold mb-4"><DoorOpen className="inline mr-2" /> Salida — Hab. {habitacionSeleccionada.numeroHabitacion}</h3>
-            <p>¿Confirmar la salida del cliente <strong>{habitacionSeleccionada.clienteHuesped || 'desconocido'}</strong>?</p>
-            <p className="text-sm text-gray-500 mt-2">La habitación pasará a estado <strong>Limpieza</strong>.</p>
+          <div className="modal-box max-w-[95vw] max-h-[90vh] overflow-y-auto bg-base-100 border border-base-200">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><DoorOpen /> Salida — Hab. {habitacionSeleccionada.numeroHabitacion}</h3>
+            <p className="text-base-content/90">¿Confirmar la salida del cliente <strong>{habitacionSeleccionada.clienteHuesped || 'desconocido'}</strong>?</p>
+            <p className="text-sm text-base-content/60 mt-2">La habitación pasará a estado <strong>Limpieza</strong>.</p>
             <div className="modal-action">
               <button className="btn btn-ghost" onClick={() => setModalAbierto(null)}>Cancelar</button>
               <LoadingButton type="button" isLoading={cargandoAccion} onClick={ejecutarSalida} className="btn-success">Confirmar Salida</LoadingButton>
@@ -921,10 +933,10 @@ export default function HabitacionList() {
         </div>
       )}
 
-      {/* Modal de Crear/Editar */}
+      {/* ──────────────── MODAL DE CREAR/EDITAR ──────────────── */}
       {(modalAbierto === 'crear' || modalAbierto === 'editar') && (
         <div className="modal modal-open modal-middle">
-          <div className="modal-box max-w-[95vw] max-h-[90vh] overflow-y-auto">
+          <div className="modal-box max-w-lg max-h-[90vh] overflow-y-auto bg-base-100 border border-base-200">
             <h3 className="text-lg font-bold mb-4">{modalAbierto === 'editar' ? 'Editar Habitación' : 'Nueva Habitación'}</h3>
             <form onSubmit={handleSubmit(manejarEnvioAdmin)} noValidate>
               <div className="form-control mb-4">
