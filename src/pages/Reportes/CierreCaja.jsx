@@ -25,7 +25,7 @@ export default function CierreCaja() {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [mostrarPdf, setMostrarPdf] = useState(false);
 
-  // --- NUEVOS ESTADOS PARA SUNAT ---
+  // Estados para SUNAT
   const [estadoEnvio, setEstadoEnvio] = useState(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -81,7 +81,6 @@ export default function CierreCaja() {
     }
   };
 
-  // --- NUEVA FUNCIÓN: cargar estado SUNAT ---
   const cargarEstadoEnvio = async (fechaConsulta) => {
     try {
       const res = await api.get('/Reporte/cierre-caja/estado-envio', {
@@ -93,7 +92,6 @@ export default function CierreCaja() {
     }
   };
 
-  // Cargar datos y estado SUNAT cuando cambia la fecha
   useEffect(() => {
     cargarCierre(fecha);
     cargarEstadoEnvio(fecha);
@@ -138,7 +136,6 @@ export default function CierreCaja() {
     }
   };
 
-  // --- NUEVA FUNCIÓN: simular envío a SUNAT ---
   const enviarASunat = async () => {
     const confirmacion = await swal.fire({
       title: '¿Simular envío a SUNAT?',
@@ -167,20 +164,24 @@ export default function CierreCaja() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">
-        <TrendingUp className="inline mr-2" size={28} />
-        Cierre de Caja
-      </h2>
+      {/* Encabezado */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <TrendingUp size={28} /> Cierre de Caja
+          </h2>
+          <p className="text-sm text-base-content/60 mt-1">Consultá el detalle de ingresos por fecha</p>
+        </div>
+      </div>
 
       {/* Selector de fecha */}
-      <div className="card bg-base-100 shadow-md mb-6">
+      <div className="card bg-base-100 shadow-sm border border-base-200 mb-6">
         <div className="card-body">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
             <div className="form-control">
               <label className="label justify-center">
-                <span className="label-text">
-                  <CalendarDays size={16} className="inline mr-1" />
-                  Fecha
+                <span className="label-text flex items-center gap-1">
+                  <CalendarDays size={16} /> Fecha
                 </span>
               </label>
               <div className="flex justify-center">
@@ -197,7 +198,7 @@ export default function CierreCaja() {
                   captionLayout="dropdown"
                   startMonth={new Date(1960, 0)}
                   endMonth={new Date(2100, 11)}
-                  className="bg-base-100 p-4 rounded-lg shadow-lg w-fit"
+                  className="bg-base-100 p-4 rounded-lg shadow-sm border border-base-300"
                 />
               </div>
             </div>
@@ -218,25 +219,27 @@ export default function CierreCaja() {
       </div>
 
       {/* Tabla de ingresos */}
-      <div className="card bg-base-100 shadow-md mb-6">
+      <div className="card bg-base-100 shadow-sm border border-base-200 mb-6">
         <div className="card-body">
-          <h3 className="card-title mb-4">
+          <h3 className="card-title text-lg font-semibold mb-4">
             Ingresos del {fecha ? format(new Date(fecha + 'T00:00:00'), 'dd/MM/yyyy') : '—'}
           </h3>
           <div className="overflow-x-auto">
-            <table className="table table-zebra">
+            <table className="table table-zebra w-full">
               <thead>
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map(header => (
                       <th
                         key={header.id}
-                        className={header.column.getCanSort() ? 'cursor-pointer select-none' : ''}
+                        className={`${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-base-200/50 transition-colors' : ''} text-sm font-semibold text-base-content/80`}
                         onClick={header.column.getToggleSortingHandler()}
                       >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {header.column.getIsSorted() === 'asc' && ' 🔼'}
-                        {header.column.getIsSorted() === 'desc' && ' 🔽'}
+                        <div className="flex items-center gap-1">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {header.column.getIsSorted() === 'asc' && <span className="text-xs">🔼</span>}
+                          {header.column.getIsSorted() === 'desc' && <span className="text-xs">🔽</span>}
+                        </div>
                       </th>
                     ))}
                   </tr>
@@ -245,15 +248,15 @@ export default function CierreCaja() {
               <tbody>
                 {table.getRowModel().rows.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="text-center text-gray-500 py-8">
+                    <td colSpan={3} className="text-center text-base-content/50 py-8">
                       {cargando ? 'Cargando...' : 'Sin movimientos para esta fecha'}
                     </td>
                   </tr>
                 ) : (
                   table.getRowModel().rows.map(row => (
-                    <tr key={row.id}>
+                    <tr key={row.id} className="hover:bg-base-200/50 transition-colors">
                       {row.getVisibleCells().map(cell => (
-                        <td key={cell.id}>
+                        <td key={cell.id} className="text-base-content/90">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
                       ))}
@@ -268,7 +271,7 @@ export default function CierreCaja() {
           {datos.length > 0 && (
             <div className="mt-4 space-y-4">
               <div className="text-right">
-                <p className="text-lg font-bold">
+                <p className="text-lg font-bold text-base-content">
                   <DollarSign size={20} className="inline mr-1" />
                   Total General: S/ {totalGeneral.toFixed(2)}
                 </p>
@@ -278,13 +281,13 @@ export default function CierreCaja() {
               <div className="flex flex-col sm:flex-row items-end sm:items-center justify-between gap-4">
                 {/* Estado de envío */}
                 {estadoEnvio && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold">Estado SUNAT:</span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-semibold text-base-content/80">Estado SUNAT:</span>
                     <span className={`badge ${estadoEnvio.idEstadoSunat === 2 ? 'badge-info' : estadoEnvio.idEstadoSunat === 3 ? 'badge-success' : 'badge-warning'}`}>
                       {estadoEnvio.nombreEstadoSunat ?? 'Pendiente'}
                     </span>
                     {estadoEnvio.fechaEnvio && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-base-content/50">
                         ({new Date(estadoEnvio.fechaEnvio).toLocaleString('es-PE')})
                       </span>
                     )}
@@ -292,20 +295,20 @@ export default function CierreCaja() {
                 )}
 
                 {/* Botones */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {estadoEnvio && estadoEnvio.idEstadoSunat === 1 && (
                     <button
-                      className="btn btn-sm btn-info"
+                      className="btn btn-sm btn-info gap-1"
                       onClick={enviarASunat}
                       disabled={enviando}
                     >
-                      {enviando ? 'Enviando...' : <><Send size={16} className="mr-1" /> Enviar a SUNAT</>}
+                      {enviando ? 'Enviando...' : <><Send size={16} /> Enviar a SUNAT</>}
                     </button>
                   )}
-                  <button className="btn btn-primary btn-sm" onClick={generarPdf}>
-                    <FileText size={16} className="mr-1" /> Generar PDF
+                  <button className="btn btn-primary btn-sm gap-1" onClick={generarPdf}>
+                    <FileText size={16} /> Generar PDF
                   </button>
-                  <button className="btn btn-sm btn-success" onClick={exportarExcel}>
+                  <button className="btn btn-sm btn-success gap-1" onClick={exportarExcel}>
                     <FileSpreadsheet size={16} /> Exportar Excel
                   </button>
                 </div>

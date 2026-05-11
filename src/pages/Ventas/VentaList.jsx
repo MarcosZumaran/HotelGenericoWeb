@@ -41,7 +41,6 @@ export default function VentaList() {
         }
     };
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => {
         cargarProductos();
     }, []);
@@ -104,7 +103,7 @@ export default function VentaList() {
                 title: 'Límite de boleta anónima superado',
                 text: 'Para montos mayores a S/ 700.00 es obligatorio identificar al comprador. Busque un cliente por su DNI.',
             });
-            return; // Detecion de la venta
+            return;
         }
 
         setCargando(true);
@@ -123,9 +122,9 @@ export default function VentaList() {
                 icon: 'success',
                 title: '¡Venta realizada!',
                 html: `
-                <p>Venta N° <strong>${res.data.idVenta}</strong></p>
-                <p>Monto total: <strong>S/ ${res.data.total.toFixed(2)}</strong></p>
-            `,
+          <p>Venta N° <strong>${res.data.idVenta}</strong></p>
+          <p>Monto total: <strong>S/ ${res.data.total.toFixed(2)}</strong></p>
+        `,
                 confirmButtonText: 'Aceptar',
             });
 
@@ -150,23 +149,33 @@ export default function VentaList() {
     ];
 
     if (!puedeVender) {
-        return <div className="text-center text-gray-500 py-16">No tenés permisos para vender productos.</div>;
+        return (
+            <div className="flex flex-col items-center justify-center py-16 text-base-content/50 gap-2">
+                <ShoppingCart size={48} className="opacity-50" />
+                <p>No tenés permisos para vender productos.</p>
+            </div>
+        );
     }
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-6">
-                <ShoppingCart className="inline mr-2" size={28} />
-                Nueva Venta
-            </h2>
+            {/* Encabezado */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <div>
+                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                        <ShoppingCart size={28} /> Nueva Venta
+                    </h2>
+                    <p className="text-sm text-base-content/60 mt-1">Registrá ventas de productos del hotel</p>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Panel izquierdo: cliente y productos */}
                 <div className="lg:col-span-2 space-y-6">
                     {/* Buscar cliente */}
-                    <div className="card bg-base-100 shadow-md">
+                    <div className="card bg-base-100 shadow-sm border border-base-200">
                         <div className="card-body">
-                            <h3 className="card-title"><User size={20} /> Cliente</h3>
+                            <h3 className="card-title text-base flex items-center gap-2"><User size={20} /> Cliente</h3>
                             <div className="flex gap-2">
                                 <input
                                     type="text"
@@ -176,21 +185,27 @@ export default function VentaList() {
                                     onChange={(e) => setBuscarCliente(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && buscarClientePorDocumento()}
                                 />
-                                <button className="btn btn-primary" onClick={buscarClientePorDocumento}>
+                                <button className="btn btn-primary gap-2" onClick={buscarClientePorDocumento}>
                                     <Search size={18} /> Buscar
                                 </button>
                             </div>
                             {clienteSeleccionado && (
-                                <p className="mt-2 text-sm">Cliente: <strong>{clienteSeleccionado.nombres} {clienteSeleccionado.apellidos}</strong></p>
+                                <p className="mt-2 text-sm text-base-content/90">
+                                    Cliente: <strong>{clienteSeleccionado.nombres} {clienteSeleccionado.apellidos}</strong>
+                                </p>
                             )}
-                            {!clienteSeleccionado && <p className="mt-2 text-xs text-gray-500">Venta al cliente anónimo (boleta ≤ S/700)</p>}
+                            {!clienteSeleccionado && (
+                                <p className="mt-2 text-xs text-base-content/50">
+                                    Venta al cliente anónimo (boleta ≤ S/700)
+                                </p>
+                            )}
                         </div>
                     </div>
 
                     {/* Agregar producto */}
-                    <div className="card bg-base-100 shadow-md">
+                    <div className="card bg-base-100 shadow-sm border border-base-200">
                         <div className="card-body">
-                            <h3 className="card-title">Agregar Producto</h3>
+                            <h3 className="card-title text-base">Agregar Producto</h3>
                             <div className="flex gap-2 items-end">
                                 <select
                                     className="select select-bordered flex-1"
@@ -211,7 +226,7 @@ export default function VentaList() {
                                     value={cantidad}
                                     onChange={(e) => setCantidad(e.target.value)}
                                 />
-                                <button className="btn btn-secondary" onClick={agregarAlCarrito}>
+                                <button className="btn btn-primary gap-2" onClick={agregarAlCarrito}>
                                     <Plus size={18} />
                                 </button>
                             </div>
@@ -219,13 +234,13 @@ export default function VentaList() {
                     </div>
 
                     {/* Carrito */}
-                    <div className="card bg-base-100 shadow-md">
+                    <div className="card bg-base-100 shadow-sm border border-base-200">
                         <div className="card-body">
-                            <h3 className="card-title">Carrito</h3>
+                            <h3 className="card-title text-base">Carrito</h3>
                             {carrito.length === 0 ? (
-                                <p className="text-gray-500 py-4">No hay productos en el carrito.</p>
+                                <p className="text-base-content/50 py-4">No hay productos en el carrito.</p>
                             ) : (
-                                <table className="table table-zebra">
+                                <table className="table table-zebra w-full">
                                     <thead>
                                         <tr>
                                             <th>Producto</th>
@@ -236,10 +251,10 @@ export default function VentaList() {
                                     </thead>
                                     <tbody>
                                         {carrito.map(item => (
-                                            <tr key={item.idProducto}>
-                                                <td>{item.nombre}</td>
-                                                <td>{item.cantidad}</td>
-                                                <td>S/ {(item.precioUnitario * item.cantidad).toFixed(2)}</td>
+                                            <tr key={item.idProducto} className="hover:bg-base-200/50 transition-colors">
+                                                <td className="text-base-content/90">{item.nombre}</td>
+                                                <td className="text-base-content/90">{item.cantidad}</td>
+                                                <td className="text-base-content/90">S/ {(item.precioUnitario * item.cantidad).toFixed(2)}</td>
                                                 <td>
                                                     <button
                                                         className="btn btn-ghost btn-xs text-error"
@@ -254,7 +269,7 @@ export default function VentaList() {
                                 </table>
                             )}
                             {carrito.length > 0 && (
-                                <p className="text-right font-bold text-lg mt-4">
+                                <p className="text-right font-bold text-lg mt-4 text-base-content">
                                     Total: S/ {totalVenta.toFixed(2)}
                                 </p>
                             )}
@@ -264,18 +279,18 @@ export default function VentaList() {
 
                 {/* Panel derecho: resumen y pago */}
                 <div className="space-y-6">
-                    <div className="card bg-base-100 shadow-md">
+                    <div className="card bg-base-100 shadow-sm border border-base-200">
                         <div className="card-body">
-                            <h3 className="card-title"><DollarSign size={20} /> Resumen de Venta</h3>
-                            <p>Productos: {carrito.length}</p>
-                            <p className="text-2xl font-bold">S/ {totalVenta.toFixed(2)}</p>
+                            <h3 className="card-title text-base flex items-center gap-2"><DollarSign size={20} /> Resumen de Venta</h3>
+                            <p className="text-base-content/80">Productos: {carrito.length}</p>
+                            <p className="text-2xl font-bold text-base-content">S/ {totalVenta.toFixed(2)}</p>
                         </div>
                     </div>
 
                     <form onSubmit={handleSubmit(onSubmit)}>
-                        <div className="card bg-base-100 shadow-md">
+                        <div className="card bg-base-100 shadow-sm border border-base-200">
                             <div className="card-body">
-                                <h3 className="card-title">Método de Pago</h3>
+                                <h3 className="card-title text-base">Método de Pago</h3>
                                 <select
                                     className={`select select-bordered ${errors.metodoPago ? 'select-error' : ''}`}
                                     {...register('metodoPago')}

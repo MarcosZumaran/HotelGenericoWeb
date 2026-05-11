@@ -98,43 +98,86 @@ export default function ComprobanteList() {
     } catch (error) { swal.fire('Error', 'No se pudo generar el PDF', 'error'); }
   };
 
-  if (cargando && comprobantes.length === 0) return <div className="flex justify-center items-center h-64"><span className="loading loading-spinner loading-lg"></span></div>;
+  if (cargando && comprobantes.length === 0) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <span className="loading loading-spinner loading-lg text-primary"></span>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold"><Receipt className="inline mr-2" size={28} />Comprobantes</h2>
+      {/* Encabezado */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Receipt size={28} /> Comprobantes
+          </h2>
+          <p className="text-sm text-base-content/60 mt-1">Consultá todos los comprobantes emitidos</p>
+        </div>
       </div>
-      <div className="card bg-base-100 shadow-md">
-        <div className="card-body">
+
+      {/* Tabla */}
+      <div className="card bg-base-100 shadow-sm border border-base-200">
+        <div className="card-body p-0">
           <div className="overflow-x-auto">
-            <table className="table table-zebra">
+            <table className="table w-full [&_tbody_tr:nth-child(even)]:bg-base-200/30 [&_tbody_tr:nth-child(odd)]:bg-base-100">
               <thead>
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map(header => (
-                      <th key={header.id} className={header.column.getCanSort() ? 'cursor-pointer select-none' : ''} onClick={header.column.getToggleSortingHandler()}>
-                        {flexRender(header.column.columnDef.header, header.getContext())}{header.column.getIsSorted() === 'asc' && ' 🔼'}{header.column.getIsSorted() === 'desc' && ' 🔽'}
+                      <th
+                        key={header.id}
+                        className={`${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-base-200/50 transition-colors' : ''} text-sm font-semibold text-base-content/80`}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        <div className="flex items-center gap-1">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {header.column.getIsSorted() === 'asc' && <span className="text-xs">🔼</span>}
+                          {header.column.getIsSorted() === 'desc' && <span className="text-xs">🔽</span>}
+                        </div>
                       </th>
                     ))}
-                    <th>Acciones</th>
+                    <th className="text-sm font-semibold text-base-content/80">Acciones</th>
                   </tr>
                 ))}
               </thead>
               <tbody ref={parentRef}>
                 {table.getRowModel().rows.length === 0 ? (
-                  <tr><td colSpan={8} className="text-center text-gray-500 py-8">No se encontraron comprobantes.</td></tr>
+                  <tr>
+                    <td colSpan={8} className="text-center text-base-content/50 py-8">
+                      No se encontraron comprobantes.
+                    </td>
+                  </tr>
                 ) : (
                   table.getRowModel().rows.map(row => (
                     <tr key={row.id} className="hover:bg-base-200/50 transition-colors">
-                      {row.getVisibleCells().map(cell => (<td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>))}
+                      {row.getVisibleCells().map(cell => (
+                        <td key={cell.id} className="text-base-content/90">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
                       <td>
                         <div className="flex gap-1">
-                          <button className="btn btn-ghost btn-xs" onClick={() => verPdf(row.original.idComprobante)} title="Ver PDF"><FileText size={16} /></button>
-                          <button className="btn btn-ghost btn-xs" onClick={() => verDetalle(row.original.idComprobante)} title="Ver detalle"><Eye size={16} /></button>
+                          <button className="btn btn-ghost btn-xs" onClick={() => verPdf(row.original.idComprobante)} title="Ver PDF">
+                            <FileText size={16} />
+                          </button>
+                          <button className="btn btn-ghost btn-xs" onClick={() => verDetalle(row.original.idComprobante)} title="Ver detalle">
+                            <Eye size={16} />
+                          </button>
                           {esAdmin && row.original.idEstadoSunat === 1 && (
-                            <button className="btn btn-ghost btn-xs text-info" onClick={() => marcarEnviado(row.original.idComprobante)} disabled={enviandoId === row.original.idComprobante} title="Marcar como enviado">
-                              {enviandoId === row.original.idComprobante ? <span className="loading loading-spinner loading-xs"></span> : <SendHorizontal size={16} />}
+                            <button
+                              className="btn btn-ghost btn-xs text-info"
+                              onClick={() => marcarEnviado(row.original.idComprobante)}
+                              disabled={enviandoId === row.original.idComprobante}
+                              title="Marcar como enviado"
+                            >
+                              {enviandoId === row.original.idComprobante ? (
+                                <span className="loading loading-spinner loading-xs"></span>
+                              ) : (
+                                <SendHorizontal size={16} />
+                              )}
                             </button>
                           )}
                         </div>
@@ -148,6 +191,7 @@ export default function ComprobanteList() {
           <Paginacion page={page} pageSize={pageSize} totalItems={totalItems} onPageChange={handlePageChange} />
         </div>
       </div>
+
       {mostrarPdf && <PdfViewerModal pdfUrl={pdfUrl} onClose={() => { setMostrarPdf(false); setPdfUrl(null); }} />}
     </div>
   );

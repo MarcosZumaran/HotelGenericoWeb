@@ -7,7 +7,7 @@ import api from '../../api/axios';
 import { Plus, Edit, Trash2, Package, Hash, DollarSign, Layers } from 'lucide-react';
 import swal from '../../lib/swal';
 import LoadingButton from '../../components/ui/LoadingButton';
-import { useMemo } from 'react';  // ← agregá useMemo a este import
+import { useMemo } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -114,7 +114,6 @@ export default function ProductoList() {
     getSortedRowModel: getSortedRowModel(),
   });
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     cargarProductos();
   }, []);
@@ -217,7 +216,7 @@ export default function ProductoList() {
   if (cargando) {
     return (
       <div className="flex justify-center items-center h-64">
-        <span className="loading loading-spinner loading-lg"></span>
+        <span className="loading loading-spinner loading-lg text-primary"></span>
       </div>
     );
   }
@@ -226,34 +225,38 @@ export default function ProductoList() {
     <div>
       {/* Encabezado */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold">
-          <Package className="inline mr-2" size={28} />
-          Productos
-        </h2>
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Package size={28} /> Productos
+          </h2>
+          <p className="text-sm text-base-content/60 mt-1">Gestioná el catálogo de productos y servicios</p>
+        </div>
         {esAdmin && (
-          <button className="btn btn-primary" onClick={abrirModalCrear}>
+          <button className="btn btn-primary gap-2" onClick={abrirModalCrear}>
             <Plus size={20} /> Nuevo Producto
           </button>
         )}
       </div>
 
       {/* Tabla */}
-      <div className="card bg-base-100 shadow-md">
-        <div className="card-body">
+      <div className="card bg-base-100 shadow-sm border border-base-200">
+        <div className="card-body p-0">
           <div className="overflow-x-auto">
-            <table className="table table-zebra">
+            <table className="table table-zebra w-full">
               <thead>
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map(header => (
                       <th
                         key={header.id}
-                        className={header.column.getCanSort() ? 'cursor-pointer select-none' : ''}
+                        className={`${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-base-200/50 transition-colors' : ''} text-sm font-semibold text-base-content/80`}
                         onClick={header.column.getToggleSortingHandler()}
                       >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {header.column.getIsSorted() === 'asc' && ' 🔼'}
-                        {header.column.getIsSorted() === 'desc' && ' 🔽'}
+                        <div className="flex items-center gap-1">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {header.column.getIsSorted() === 'asc' && <span className="text-xs">🔼</span>}
+                          {header.column.getIsSorted() === 'desc' && <span className="text-xs">🔽</span>}
+                        </div>
                       </th>
                     ))}
                   </tr>
@@ -262,15 +265,15 @@ export default function ProductoList() {
               <tbody>
                 {table.getRowModel().rows.length === 0 ? (
                   <tr>
-                    <td colSpan={columns.length} className="text-center text-gray-500 py-8">
+                    <td colSpan={columns.length} className="text-center text-base-content/50 py-8">
                       No hay productos registrados
                     </td>
                   </tr>
                 ) : (
                   table.getRowModel().rows.map(row => (
-                    <tr key={row.id}>
+                    <tr key={row.id} className="hover:bg-base-200/50 transition-colors">
                       {row.getVisibleCells().map(cell => (
-                        <td key={cell.id}>
+                        <td key={cell.id} className="text-base-content/90">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
                       ))}
@@ -286,7 +289,7 @@ export default function ProductoList() {
       {/* Modal de creación/edición */}
       {mostrarModal && (
         <div className="modal modal-open">
-          <div className="modal-box max-w-lg">
+          <div className="modal-box max-w-lg bg-base-100 border border-base-200 shadow-xl">
             <h3 className="text-lg font-bold mb-4">
               {editando ? 'Editar Producto' : 'Nuevo Producto'}
             </h3>
@@ -415,7 +418,6 @@ export default function ProductoList() {
                 <LoadingButton
                   type="submit"
                   isLoading={isSubmitting}
-                  className="btn-primary"
                 >
                   {editando ? 'Actualizar' : 'Crear'}
                 </LoadingButton>

@@ -202,76 +202,114 @@ export default function ClienteList() {
   if (cargando && clientes.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
-        <span className="loading loading-spinner loading-lg"></span>
+        <span className="loading loading-spinner loading-lg text-primary"></span>
       </div>
     );
   }
 
   return (
     <div>
+      {/* Cabecera */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h2 className="text-2xl font-bold">Clientes</h2>
+        <div>
+          <h2 className="text-2xl font-bold">Clientes</h2>
+          <p className="text-sm text-base-content/60 mt-1">Gestioná la información de los huéspedes y clientes</p>
+        </div>
         {esAdmin && (
-          <button className="btn btn-primary" onClick={abrirModalCrear}>
+          <button className="btn btn-primary gap-2" onClick={abrirModalCrear}>
             <Plus size={20} /> Nuevo Cliente
           </button>
         )}
       </div>
 
-      <div className="card bg-base-100 shadow-md mb-6">
-        <div className="card-body">
+      {/* Filtros de búsqueda */}
+      <div className="card bg-base-100 shadow-sm border border-base-200 mb-6">
+        <div className="card-body p-5">
           <div className="flex flex-col sm:flex-row gap-4 items-end">
             <div className="form-control flex-1">
               <label className="label"><span className="label-text">Tipo de Documento</span></label>
               <select className="select select-bordered" value={buscarTipo} onChange={(e) => setBuscarTipo(e.target.value)}>
-                <option value="">Todos</option><option value="1">DNI</option><option value="7">Pasaporte</option>
+                <option value="">Todos</option>
+                <option value="1">DNI</option>
+                <option value="7">Pasaporte</option>
               </select>
             </div>
             <div className="form-control flex-1">
               <label className="label"><span className="label-text">Número de Documento</span></label>
-              <input type="text" className="input input-bordered" placeholder="Ingresá el documento"
-                value={buscarDocumento} onChange={(e) => setBuscarDocumento(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && buscarCliente()} />
+              <input
+                type="text"
+                className="input input-bordered"
+                placeholder="Ingresá el documento"
+                value={buscarDocumento}
+                onChange={(e) => setBuscarDocumento(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && buscarCliente()}
+              />
             </div>
-            <button className="btn btn-primary" onClick={buscarCliente}><Search size={20} /> Buscar</button>
+            <button className="btn btn-primary gap-2" onClick={buscarCliente}>
+              <Search size={20} /> Buscar
+            </button>
             <button className="btn btn-ghost" onClick={limpiarBusqueda}>Limpiar</button>
           </div>
         </div>
       </div>
 
-      <div className="card bg-base-100 shadow-md">
-        <div className="card-body">
+      {/* Tabla de clientes */}
+      <div className="card bg-base-100 shadow-sm border border-base-200">
+        <div className="card-body p-0">
           <div className="overflow-x-auto">
-            <table className="table table-zebra">
+            <table className="table table-zebra w-full">
               <thead>
                 {table.getHeaderGroups().map(headerGroup => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map(header => (
-                      <th key={header.id} className={header.column.getCanSort() ? 'cursor-pointer select-none' : ''}
-                        onClick={header.column.getToggleSortingHandler()}>
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                        {header.column.getIsSorted() === 'asc' && ' 🔼'}
-                        {header.column.getIsSorted() === 'desc' && ' 🔽'}
+                      <th
+                        key={header.id}
+                        className={`${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-base-200/50 transition-colors' : ''} text-sm font-semibold text-base-content/80`}
+                        onClick={header.column.getToggleSortingHandler()}
+                      >
+                        <div className="flex items-center gap-1">
+                          {flexRender(header.column.columnDef.header, header.getContext())}
+                          {header.column.getIsSorted() === 'asc' && <span className="text-xs">🔼</span>}
+                          {header.column.getIsSorted() === 'desc' && <span className="text-xs">🔽</span>}
+                        </div>
                       </th>
                     ))}
-                    {esAdmin && <th>Acciones</th>}
+                    {esAdmin && <th className="text-sm font-semibold text-base-content/80">Acciones</th>}
                   </tr>
                 ))}
               </thead>
               <tbody ref={parentRef}>
                 {table.getRowModel().rows.length === 0 ? (
-                  <tr><td colSpan={esAdmin ? 6 : 5} className="text-center text-gray-500 py-8">No se encontraron clientes</td></tr>
+                  <tr>
+                    <td colSpan={esAdmin ? 6 : 5} className="text-center text-base-content/50 py-8">
+                      No se encontraron clientes
+                    </td>
+                  </tr>
                 ) : (
                   table.getRowModel().rows.map(row => (
                     <tr key={row.id} className="hover:bg-base-200/50 transition-colors">
                       {row.getVisibleCells().map(cell => (
-                        <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                        <td key={cell.id} className="text-base-content/90">
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
                       ))}
                       {esAdmin && (
                         <td>
                           <div className="flex gap-1">
-                            <button className="btn btn-ghost btn-xs" onClick={() => abrirModalEditar(row.original)} title="Editar"><Edit size={16} /></button>
-                            <button className="btn btn-ghost btn-xs text-error" onClick={() => eliminarCliente(row.original.idCliente)} title="Eliminar"><Trash2 size={16} /></button>
+                            <button
+                              className="btn btn-ghost btn-xs"
+                              onClick={() => abrirModalEditar(row.original)}
+                              title="Editar"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button
+                              className="btn btn-ghost btn-xs text-error"
+                              onClick={() => eliminarCliente(row.original.idCliente)}
+                              title="Eliminar"
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </div>
                         </td>
                       )}
@@ -285,9 +323,10 @@ export default function ClienteList() {
         </div>
       </div>
 
+      {/* Modal de Crear/Editar */}
       {mostrarModal && (
         <div className="modal modal-open">
-          <div className="modal-box max-w-lg">
+          <div className="modal-box max-w-lg bg-base-100 border border-base-200 shadow-xl">
             <h3 className="text-lg font-bold mb-4">{editando ? 'Editar Cliente' : 'Nuevo Cliente'}</h3>
             <form onSubmit={handleSubmit(onSubmit)} noValidate>
               <div className="form-control mb-4">
@@ -313,12 +352,22 @@ export default function ClienteList() {
               <div className="form-control mb-6">
                 <label className="label"><span className="label-text">Fecha de Nacimiento</span></label>
                 <Controller name="fechaNacimiento" control={control} render={({ field }) => (
-                  <div className="flex justify-center"><DayPicker mode="single" selected={field.value ? new Date(field.value + 'T00:00:00') : undefined} onSelect={(date) => { if (date) { field.onChange(format(date, 'yyyy-MM-dd')); } else { field.onChange(''); } }} captionLayout="dropdown" startMonth={new Date(1960, 0)} endMonth={new Date(2100, 11)} className="bg-base-100 p-4 rounded-lg shadow-lg" /></div>
+                  <div className="flex justify-center">
+                    <DayPicker
+                      mode="single"
+                      selected={field.value ? new Date(field.value + 'T00:00:00') : undefined}
+                      onSelect={(date) => { if (date) { field.onChange(format(date, 'yyyy-MM-dd')); } else { field.onChange(''); } }}
+                      captionLayout="dropdown"
+                      startMonth={new Date(1960, 0)}
+                      endMonth={new Date(2100, 11)}
+                      className="bg-base-100 p-4 rounded-lg shadow-sm border border-base-300"
+                    />
+                  </div>
                 )} />
               </div>
               <div className="modal-action">
                 <button type="button" className="btn btn-ghost" onClick={cerrarModal}>Cancelar</button>
-                <LoadingButton type="submit" isLoading={isSubmitting} className="btn-primary">{editando ? 'Actualizar' : 'Crear'}</LoadingButton>
+                <LoadingButton type="submit" isLoading={isSubmitting}>{editando ? 'Actualizar' : 'Crear'}</LoadingButton>
               </div>
             </form>
           </div>
