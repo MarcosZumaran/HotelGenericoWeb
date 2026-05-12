@@ -12,7 +12,7 @@ export default function ConnectionIndicator() {
         <WifiOff size={16} className="text-error" />
       )}
       <span className="hidden sm:inline">
-        {isConnected ? 'En vivo' : 'Desconectado'}
+        {isConnected ? 'En Linea' : 'Desconectado'}
       </span>
     </div>
   );
