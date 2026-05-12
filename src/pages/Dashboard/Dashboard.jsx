@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/axios';
 import { useSignalR } from '../../hooks/useSignalR';
 import toast from 'react-hot-toast';
-import { Bed, DollarSign, TrendingUp, Users } from 'lucide-react';
+import { Bed, DollarSign, TrendingUp, Users, Wrench } from 'lucide-react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -25,6 +25,8 @@ export default function Dashboard() {
     totalHabitaciones: 0,
     ocupadas: 0,
     disponibles: 0,
+    enLimpieza: 0,
+    enMantenimiento: 0,
     ingresosHoy: 0,
     estadoHabitaciones: [],
   });
@@ -34,73 +36,57 @@ export default function Dashboard() {
     ocupadas: '#f59e0b',
     disponibles: '#22c55e',
     limpieza: '#3b82f6',
+    mantenimiento: '#6b7280',
+  };
+
+  const cargarDatos = async () => {
+    try {
+      const [habRes, cierreRes, topRes] = await Promise.all([
+        api.get('/Reporte/estado-habitaciones'),
+        api.get('/Reporte/cierre-caja', { params: { fecha: new Date().toISOString().split('T')[0] } }),
+        api.get('/Reporte/top-productos', { params: { dias: 30 } }),
+      ]);
+
+      const habitaciones = habRes.data;
+      const cierre = cierreRes.data;
+
+      setDatos({
+        totalHabitaciones: habitaciones.length,
+        ocupadas: habitaciones.filter((h) => h.estado === 'Ocupada').length,
+        disponibles: habitaciones.filter((h) => h.estado === 'Disponible').length,
+        enLimpieza: habitaciones.filter((h) => h.estado === 'Limpieza').length,
+        enMantenimiento: habitaciones.filter((h) => h.estado === 'Mantenimiento').length,
+        ingresosHoy: cierre.reduce((sum, item) => sum + (item.ingresos || 0), 0),
+        estadoHabitaciones: habitaciones,
+      });
+      setTopProductos(topRes.data);
+    } catch (error) {
+      console.error('Error al cargar datos del dashboard:', error);
+    } finally {
+      setCargando(false);
+    }
   };
 
   useEffect(() => {
-    const cargarDatos = async () => {
-      try {
-        const [habRes, cierreRes, topRes] = await Promise.all([
-          api.get('/Reporte/estado-habitaciones'),
-          api.get('/Reporte/cierre-caja', { params: { fecha: new Date().toISOString().split('T')[0] } }),
-          api.get('/Reporte/top-productos', { params: { dias: 30 } }),
-        ]);
-
-        const habitaciones = habRes.data;
-        const cierre = cierreRes.data;
-
-        setDatos({
-          totalHabitaciones: habitaciones.length,
-          ocupadas: habitaciones.filter((h) => h.estado === 'Ocupada').length,
-          disponibles: habitaciones.filter((h) => h.estado === 'Disponible').length,
-          enLimpieza: habitaciones.filter((h) => h.estado === 'Limpieza').length,
-          ingresosHoy: cierre.reduce((sum, item) => sum + (item.ingresos || 0), 0),
-          estadoHabitaciones: habitaciones,
-        });
-        setTopProductos(topRes.data);
-      } catch (error) {
-        console.error('Error al cargar datos del dashboard:', error);
-      } finally {
-        setCargando(false);
-      }
-    };
-
     cargarDatos();
   }, []);
 
   useSignalR('EstadoHabitacionCambiado', (data) => {
-    toast.success(`🔄 Habitación ${data.numero} ahora está: ${data.nuevoEstado}`);
-    const recargar = async () => {
-      try {
-        const [habRes, cierreRes, topRes] = await Promise.all([
-          api.get('/Reporte/estado-habitaciones'),
-          api.get('/Reporte/cierre-caja', { params: { fecha: new Date().toISOString().split('T')[0] } }),
-          api.get('/Reporte/top-productos', { params: { dias: 30 } }),
-        ]);
-        const habitaciones = habRes.data;
-        const cierre = cierreRes.data;
-        setDatos(prev => ({
-          ...prev,
-          totalHabitaciones: habitaciones.length,
-          ocupadas: habitaciones.filter((h) => h.estado === 'Ocupada').length,
-          disponibles: habitaciones.filter((h) => h.estado === 'Disponible').length,
-          enLimpieza: habitaciones.filter((h) => h.estado === 'Limpieza').length,
-          ingresosHoy: cierre.reduce((sum, item) => sum + (item.ingresos || 0), 0),
-          estadoHabitaciones: habitaciones,
-        }));
-        setTopProductos(topRes.data);
-      } catch (error) {
-        console.error('Error al recargar datos:', error);
-      }
-    };
-    recargar();
+    toast.success(`Habitacion ${data.numero} ahora esta: ${data.nuevoEstado}`);
+    cargarDatos();
   });
 
   const datosOcupacion = {
-    labels: ['Ocupadas', 'Disponibles', 'Limpieza'],
+    labels: ['Ocupadas', 'Disponibles', 'Limpieza', 'Mantenimiento'],
     datasets: [
       {
-        data: [datos.ocupadas, datos.disponibles, datos.enLimpieza || 0],
-        backgroundColor: [coloresGrafico.ocupadas, coloresGrafico.disponibles, coloresGrafico.limpieza],
+        data: [datos.ocupadas, datos.disponibles, datos.enLimpieza || 0, datos.enMantenimiento || 0],
+        backgroundColor: [
+          coloresGrafico.ocupadas,
+          coloresGrafico.disponibles,
+          coloresGrafico.limpieza,
+          coloresGrafico.mantenimiento,
+        ],
         borderWidth: 0,
       },
     ],
@@ -168,6 +154,12 @@ export default function Dashboard() {
       color: 'text-success bg-success/10',
     },
     {
+      titulo: 'En Mantenimiento',
+      valor: datos.enMantenimiento || 0,
+      icono: <Wrench size={28} />,
+      color: 'text-gray-500 bg-gray-200/50',
+    },
+    {
       titulo: 'Ingresos Hoy',
       valor: `S/ ${datos.ingresosHoy.toFixed(2)}`,
       icono: <DollarSign size={28} />,
@@ -181,22 +173,22 @@ export default function Dashboard() {
       <p className="text-base-content/70 mb-6">Bienvenido, {user?.username}</p>
 
       {/* Tarjetas de resumen */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         {tarjetas.map((tarjeta, idx) => (
           <div
             key={idx}
             className="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-shadow"
           >
-            <div className="card-body p-5">
-              <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-lg ${tarjeta.color}`}>
+            <div className="card-body p-4">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${tarjeta.color}`}>
                   {tarjeta.icono}
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium text-base-content/70">
+                  <h3 className="text-xs font-medium text-base-content/70">
                     {tarjeta.titulo}
                   </h3>
-                  <p className="text-2xl font-bold text-base-content mt-1">
+                  <p className="text-xl font-bold text-base-content mt-1">
                     {tarjeta.valor}
                   </p>
                 </div>
@@ -208,27 +200,25 @@ export default function Dashboard() {
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Gráfico de ocupación */}
         <div className="card bg-base-100 shadow-sm border border-base-200">
           <div className="card-body">
             <h3 className="card-title text-lg font-semibold mb-4">
-              Ocupación actual
+              Ocupacion actual
             </h3>
             <div className="h-64 flex items-center justify-center">
               {datos.totalHabitaciones > 0 ? (
                 <Doughnut data={datosOcupacion} options={opcionesOcupacion} />
               ) : (
-                <p className="text-base-content/50">Sin datos de ocupación</p>
+                <p className="text-base-content/50">Sin datos de ocupacion</p>
               )}
             </div>
           </div>
         </div>
 
-        {/* Gráfico de top productos */}
         <div className="card bg-base-100 shadow-sm border border-base-200">
           <div className="card-body">
             <h3 className="card-title text-lg font-semibold mb-4">
-              Productos más consumidos (30 días)
+              Productos mas consumidos (30 dias)
             </h3>
             <div className="h-64">
               {topProductos.length > 0 ? (
@@ -257,7 +247,7 @@ export default function Dashboard() {
                   <th>Tipo</th>
                   <th>Precio</th>
                   <th>Estado</th>
-                  <th>Último Cambio</th>
+                  <th>Ultimo Cambio</th>
                 </tr>
               </thead>
               <tbody>
@@ -272,7 +262,9 @@ export default function Dashboard() {
                             ? 'badge-success'
                             : h.estado === 'Ocupada'
                               ? 'badge-warning'
-                              : 'badge-info'
+                              : h.estado === 'Limpieza'
+                                ? 'badge-info'
+                                : 'badge-error'
                           }`}
                       >
                         {h.estado}

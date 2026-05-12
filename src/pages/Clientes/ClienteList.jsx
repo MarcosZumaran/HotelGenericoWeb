@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import {
-  Plus, Edit, Trash2, Search, User, Phone, Mail, Hash, ChevronLeft, ChevronRight
+  Plus, Edit, Trash2, Search
 } from 'lucide-react';
 import swal from '../../lib/swal';
 import LoadingButton from '../../components/ui/LoadingButton';
@@ -16,10 +16,9 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
-import Paginacion from '../../components/ui/Paginacion';
+import DataTable from '../../components/ui/DataTable';
 
 const columnHelper = createColumnHelper();
 
@@ -199,13 +198,12 @@ export default function ClienteList() {
     { codigo: '1', descripcion: 'DNI' }, { codigo: '7', descripcion: 'Pasaporte' }, { codigo: '6', descripcion: 'RUC' },
   ];
 
-  if (cargando && clientes.length === 0) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
-      </div>
-    );
-  }
+  const paginacion = {
+    page,
+    pageSize,
+    totalItems,
+    onPageChange: handlePageChange,
+  };
 
   return (
     <div>
@@ -254,74 +252,25 @@ export default function ClienteList() {
       </div>
 
       {/* Tabla de clientes */}
-      <div className="card bg-base-100 shadow-sm border border-base-200">
-        <div className="card-body p-0">
-          <div className="overflow-x-auto">
-            <table className="table table-zebra w-full">
-              <thead>
-                {table.getHeaderGroups().map(headerGroup => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map(header => (
-                      <th
-                        key={header.id}
-                        className={`${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-base-200/50 transition-colors' : ''} text-sm font-semibold text-base-content/80`}
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        <div className="flex items-center gap-1">
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {header.column.getIsSorted() === 'asc' && <span className="text-xs">🔼</span>}
-                          {header.column.getIsSorted() === 'desc' && <span className="text-xs">🔽</span>}
-                        </div>
-                      </th>
-                    ))}
-                    {esAdmin && <th className="text-sm font-semibold text-base-content/80">Acciones</th>}
-                  </tr>
-                ))}
-              </thead>
-              <tbody ref={parentRef}>
-                {table.getRowModel().rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={esAdmin ? 6 : 5} className="text-center text-base-content/50 py-8">
-                      No se encontraron clientes
-                    </td>
-                  </tr>
-                ) : (
-                  table.getRowModel().rows.map(row => (
-                    <tr key={row.id} className="hover:bg-base-200/50 transition-colors">
-                      {row.getVisibleCells().map(cell => (
-                        <td key={cell.id} className="text-base-content/90">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
-                      {esAdmin && (
-                        <td>
-                          <div className="flex gap-1">
-                            <button
-                              className="btn btn-ghost btn-xs"
-                              onClick={() => abrirModalEditar(row.original)}
-                              title="Editar"
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button
-                              className="btn btn-ghost btn-xs text-error"
-                              onClick={() => eliminarCliente(row.original.idCliente)}
-                              title="Eliminar"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+      <DataTable
+        table={table}
+        columns={columns}
+        emptyMessage="No se encontraron clientes"
+        paginacion={paginacion}
+        isLoading={cargando}
+        showActions={esAdmin}
+        renderActions={(row) => (
+          <div className="flex gap-1">
+            <button className="btn btn-ghost btn-xs" onClick={() => abrirModalEditar(row)} title="Editar">
+              <Edit size={16} />
+            </button>
+            <button className="btn btn-ghost btn-xs text-error" onClick={() => eliminarCliente(row.idCliente)} title="Eliminar">
+              <Trash2 size={16} />
+            </button>
           </div>
-          <Paginacion page={page} pageSize={pageSize} totalItems={totalItems} onPageChange={handlePageChange} />
-        </div>
-      </div>
+        )}
+        parentRef={parentRef}
+      />
 
       {/* Modal de Crear/Editar */}
       {mostrarModal && (

@@ -11,10 +11,10 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
 import { FileSpreadsheet } from 'lucide-react';
+import DataTable from '../../components/ui/DataTable';
 
 const columnHelper = createColumnHelper();
 
@@ -122,8 +122,6 @@ export default function CierreCaja() {
       swal.fire('Error', 'No se pudo generar el PDF', 'error');
     }
   };
-
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5054/api';
 
   const exportarExcel = async () => {
     try {
@@ -233,48 +231,12 @@ export default function CierreCaja() {
           <h3 className="card-title text-lg font-semibold mb-4">
             Ingresos del {fecha ? format(new Date(fecha + 'T00:00:00'), 'dd/MM/yyyy') : '—'}
           </h3>
-          <div className="overflow-x-auto">
-            <table className="table table-zebra w-full">
-              <thead>
-                {table.getHeaderGroups().map(headerGroup => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map(header => (
-                      <th
-                        key={header.id}
-                        className={`${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-base-200/50 transition-colors' : ''} text-sm font-semibold text-base-content/80`}
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        <div className="flex items-center gap-1">
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {header.column.getIsSorted() === 'asc' && <span className="text-xs">🔼</span>}
-                          {header.column.getIsSorted() === 'desc' && <span className="text-xs">🔽</span>}
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody>
-                {table.getRowModel().rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="text-center text-base-content/50 py-8">
-                      {cargando ? 'Cargando...' : 'Sin movimientos para esta fecha'}
-                    </td>
-                  </tr>
-                ) : (
-                  table.getRowModel().rows.map(row => (
-                    <tr key={row.id} className="hover:bg-base-200/50 transition-colors">
-                      {row.getVisibleCells().map(cell => (
-                        <td key={cell.id} className="text-base-content/90">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            table={table}
+            columns={columns}
+            emptyMessage={cargando ? 'Cargando...' : 'Sin movimientos para esta fecha'}
+            isLoading={cargando}
+          />
 
           {/* Totales y acciones */}
           {datos.length > 0 && (

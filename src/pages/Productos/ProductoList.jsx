@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { productoSchema } from './productoSchema';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/axios';
-import { Plus, Edit, Trash2, Package, Hash, DollarSign, Layers } from 'lucide-react';
+import { Plus, Edit, Trash2, Package } from 'lucide-react';
 import swal from '../../lib/swal';
 import LoadingButton from '../../components/ui/LoadingButton';
 import { useMemo } from 'react';
@@ -15,6 +15,7 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table';
+import DataTable from '../../components/ui/DataTable';
 
 export default function ProductoList() {
   const { user } = useAuth();
@@ -77,32 +78,8 @@ export default function ProductoList() {
           <span className="badge badge-ghost">{info.getValue() ?? '—'}</span>
         ),
       }),
-      // Columna de acciones (solo si es admin), sin ordenamiento
-      columnHelper.display({
-        id: 'acciones',
-        header: 'Acciones',
-        cell: ({ row }) =>
-          user?.nombreRol === 'Administrador' ? (
-            <div className="flex gap-1">
-              <button
-                className="btn btn-ghost btn-xs"
-                onClick={() => abrirModalEditar(row.original)}
-                title="Editar"
-              >
-                <Edit size={16} />
-              </button>
-              <button
-                className="btn btn-ghost btn-xs text-error"
-                onClick={() => eliminarProducto(row.original.idProducto)}
-                title="Eliminar"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-          ) : null,
-      }),
     ],
-    [user?.nombreRol]
+    []
   );
 
   const table = useReactTable({
@@ -126,7 +103,7 @@ export default function ProductoList() {
       nombre: '',
       descripcion: '',
       precioUnitario: '',
-      idAfectacionIgv: '10', // Gravado
+      idAfectacionIgv: '10',
       stock: '',
       stockMinimo: '',
       unidadMedida: 'NIU',
@@ -213,14 +190,6 @@ export default function ProductoList() {
     { codigo: '30', descripcion: 'Inafecto' },
   ];
 
-  if (cargando) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
-      </div>
-    );
-  }
-
   return (
     <div>
       {/* Encabezado */}
@@ -239,52 +208,23 @@ export default function ProductoList() {
       </div>
 
       {/* Tabla */}
-      <div className="card bg-base-100 shadow-sm border border-base-200">
-        <div className="card-body p-0">
-          <div className="overflow-x-auto">
-            <table className="table table-zebra w-full">
-              <thead>
-                {table.getHeaderGroups().map(headerGroup => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map(header => (
-                      <th
-                        key={header.id}
-                        className={`${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-base-200/50 transition-colors' : ''} text-sm font-semibold text-base-content/80`}
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        <div className="flex items-center gap-1">
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {header.column.getIsSorted() === 'asc' && <span className="text-xs">🔼</span>}
-                          {header.column.getIsSorted() === 'desc' && <span className="text-xs">🔽</span>}
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody>
-                {table.getRowModel().rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={columns.length} className="text-center text-base-content/50 py-8">
-                      No hay productos registrados
-                    </td>
-                  </tr>
-                ) : (
-                  table.getRowModel().rows.map(row => (
-                    <tr key={row.id} className="hover:bg-base-200/50 transition-colors">
-                      {row.getVisibleCells().map(cell => (
-                        <td key={cell.id} className="text-base-content/90">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+      <DataTable
+        table={table}
+        columns={columns}
+        emptyMessage="No hay productos registrados"
+        isLoading={cargando}
+        showActions={esAdmin}
+        renderActions={(row) => (
+          <div className="flex gap-1">
+            <button className="btn btn-ghost btn-xs" onClick={() => abrirModalEditar(row)} title="Editar">
+              <Edit size={16} />
+            </button>
+            <button className="btn btn-ghost btn-xs text-error" onClick={() => eliminarProducto(row.idProducto)} title="Eliminar">
+              <Trash2 size={16} />
+            </button>
           </div>
-        </div>
-      </div>
+        )}
+      />
 
       {/* Modal de creación/edición */}
       {mostrarModal && (

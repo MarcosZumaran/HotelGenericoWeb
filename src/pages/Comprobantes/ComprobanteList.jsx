@@ -11,7 +11,7 @@ import {
   flexRender, createColumnHelper,
 } from '@tanstack/react-table';
 import PdfViewerModal from '../../components/ui/PdfViewerModal';
-import Paginacion from '../../components/ui/Paginacion';
+import DataTable from '../../components/ui/DataTable';
 
 const columnHelper = createColumnHelper();
 
@@ -108,13 +108,12 @@ export default function ComprobanteList() {
     } catch (error) { swal.fire('Error', 'No se pudo generar el PDF', 'error'); }
   };
 
-  if (cargando && comprobantes.length === 0) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <span className="loading loading-spinner loading-lg text-primary"></span>
-      </div>
-    );
-  }
+  const paginacion = {
+    page,
+    pageSize,
+    totalItems,
+    onPageChange: handlePageChange,
+  };
 
   return (
     <div>
@@ -129,78 +128,39 @@ export default function ComprobanteList() {
       </div>
 
       {/* Tabla */}
-      <div className="card bg-base-100 shadow-sm border border-base-200">
-        <div className="card-body p-0">
-          <div className="overflow-x-auto">
-            <table className="table w-full [&_tbody_tr:nth-child(even)]:bg-base-200/30 [&_tbody_tr:nth-child(odd)]:bg-base-100">
-              <thead>
-                {table.getHeaderGroups().map(headerGroup => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map(header => (
-                      <th
-                        key={header.id}
-                        className={`${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-base-200/50 transition-colors' : ''} text-sm font-semibold text-base-content/80`}
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        <div className="flex items-center gap-1">
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                          {header.column.getIsSorted() === 'asc' && <span className="text-xs">🔼</span>}
-                          {header.column.getIsSorted() === 'desc' && <span className="text-xs">🔽</span>}
-                        </div>
-                      </th>
-                    ))}
-                    <th className="text-sm font-semibold text-base-content/80">Acciones</th>
-                  </tr>
-                ))}
-              </thead>
-              <tbody ref={parentRef}>
-                {table.getRowModel().rows.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="text-center text-base-content/50 py-8">
-                      No se encontraron comprobantes.
-                    </td>
-                  </tr>
+      <DataTable
+        table={table}
+        columns={columns}
+        emptyMessage="No se encontraron comprobantes."
+        paginacion={paginacion}
+        isLoading={cargando}
+        showActions={true}
+        renderActions={(row) => (
+          <div className="flex gap-1">
+            <button className="btn btn-ghost btn-xs" onClick={() => verPdf(row.idComprobante)} title="Ver PDF">
+              <FileText size={16} />
+            </button>
+            <button className="btn btn-ghost btn-xs" onClick={() => verDetalle(row.idComprobante)} title="Ver detalle">
+              <Eye size={16} />
+            </button>
+            {esAdmin && row.idEstadoSunat === 1 && (
+              <button
+                className="btn btn-ghost btn-xs text-info"
+                onClick={() => marcarEnviado(row.idComprobante)}
+                disabled={enviandoId === row.idComprobante}
+                title="Marcar como enviado"
+              >
+                {enviandoId === row.idComprobante ? (
+                  <span className="loading loading-spinner loading-xs"></span>
                 ) : (
-                  table.getRowModel().rows.map(row => (
-                    <tr key={row.id} className="hover:bg-base-200/50 transition-colors">
-                      {row.getVisibleCells().map(cell => (
-                        <td key={cell.id} className="text-base-content/90">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
-                      <td>
-                        <div className="flex gap-1">
-                          <button className="btn btn-ghost btn-xs" onClick={() => verPdf(row.original.idComprobante)} title="Ver PDF">
-                            <FileText size={16} />
-                          </button>
-                          <button className="btn btn-ghost btn-xs" onClick={() => verDetalle(row.original.idComprobante)} title="Ver detalle">
-                            <Eye size={16} />
-                          </button>
-                          {esAdmin && row.original.idEstadoSunat === 1 && (
-                            <button
-                              className="btn btn-ghost btn-xs text-info"
-                              onClick={() => marcarEnviado(row.original.idComprobante)}
-                              disabled={enviandoId === row.original.idComprobante}
-                              title="Marcar como enviado"
-                            >
-                              {enviandoId === row.original.idComprobante ? (
-                                <span className="loading loading-spinner loading-xs"></span>
-                              ) : (
-                                <SendHorizontal size={16} />
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                  <SendHorizontal size={16} />
                 )}
-              </tbody>
-            </table>
+              </button>
+            )}
           </div>
-          <Paginacion page={page} pageSize={pageSize} totalItems={totalItems} onPageChange={handlePageChange} />
-        </div>
-      </div>
+        )}
+        parentRef={parentRef}
+      />
 
       {mostrarPdf && <PdfViewerModal pdfUrl={pdfUrl} onClose={() => { setMostrarPdf(false); setPdfUrl(null); }} />}
     </div>

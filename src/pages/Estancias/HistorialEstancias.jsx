@@ -7,6 +7,7 @@ import api from '../../api/axios';
 import swal from '../../lib/swal';
 import { DoorOpen, FileText } from 'lucide-react';
 import PdfViewerModal from '../../components/ui/PdfViewerModal';
+import DataTable from '../../components/ui/DataTable';
 
 const columnHelper = createColumnHelper();
 
@@ -23,6 +24,12 @@ export default function HistorialEstancias() {
             .catch(() => swal.fire('Error', 'No se pudo cargar el historial de estancias', 'error'))
             .finally(() => setCargando(false));
     }, []);
+
+    const verPdf = (idEstancia) => {
+        const url = `${import.meta.env.VITE_API_URL || 'http://localhost:5054/api'}/Pdf/Estancia/${idEstancia}`;
+        setPdfUrl(url);
+        setMostrarPdf(true);
+    };
 
     const columns = useMemo(() => [
         columnHelper.accessor('idEstancia', { header: 'N° Estancia', enableSorting: true }),
@@ -57,6 +64,19 @@ export default function HistorialEstancias() {
                 </span>
             ),
         }),
+        columnHelper.display({
+            id: 'pdf',
+            header: 'PDF',
+            cell: ({ row }) => (
+                <button
+                    className="btn btn-ghost btn-xs"
+                    onClick={() => verPdf(row.original.idEstancia)}
+                    title="Ver PDF"
+                >
+                    <FileText size={16} />
+                </button>
+            ),
+        }),
     ], []);
 
     const table = useReactTable({
@@ -67,20 +87,6 @@ export default function HistorialEstancias() {
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
     });
-
-    const verPdf = (idEstancia) => {
-        const url = `${import.meta.env.VITE_API_URL || 'http://localhost:5054/api'}/Pdf/Estancia/${idEstancia}`;
-        setPdfUrl(url);
-        setMostrarPdf(true);
-    };
-
-    if (cargando) {
-        return (
-            <div className="flex justify-center items-center h-64">
-                <span className="loading loading-spinner loading-lg text-primary"></span>
-            </div>
-        );
-    }
 
     return (
         <div>
@@ -95,62 +101,12 @@ export default function HistorialEstancias() {
             </div>
 
             {/* Tabla */}
-            <div className="card bg-base-100 shadow-sm border border-base-200">
-                <div className="card-body p-0">
-                    <div className="overflow-x-auto">
-                        <table className="table table-zebra w-full [&_tbody_tr:nth-child(odd)]:bg-base-200/30">
-                            <thead>
-                                {table.getHeaderGroups().map(hg => (
-                                    <tr key={hg.id}>
-                                        {hg.headers.map(header => (
-                                            <th
-                                                key={header.id}
-                                                onClick={header.column.getToggleSortingHandler()}
-                                                className={`${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-base-200/50 transition-colors' : ''} text-sm font-semibold text-base-content/80`}
-                                            >
-                                                <div className="flex items-center gap-1">
-                                                    {flexRender(header.column.columnDef.header, header.getContext())}
-                                                    {header.column.getIsSorted() === 'asc' && <span className="text-xs">🔼</span>}
-                                                    {header.column.getIsSorted() === 'desc' && <span className="text-xs">🔽</span>}
-                                                </div>
-                                            </th>
-                                        ))}
-                                        <th className="text-sm font-semibold text-base-content/80">PDF</th>
-                                    </tr>
-                                ))}
-                            </thead>
-                            <tbody>
-                                {table.getRowModel().rows.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={9} className="text-center text-base-content/50 py-8">
-                                            No hay estancias registradas
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    table.getRowModel().rows.map(row => (
-                                        <tr key={row.id} className="hover:bg-base-200/50 transition-colors">
-                                            {row.getVisibleCells().map(cell => (
-                                                <td key={cell.id} className="text-base-content/90">
-                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                </td>
-                                            ))}
-                                            <td>
-                                                <button
-                                                    className="btn btn-ghost btn-xs"
-                                                    onClick={() => verPdf(row.original.idEstancia)}
-                                                    title="Ver PDF"
-                                                >
-                                                    <FileText size={16} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+            <DataTable
+                table={table}
+                columns={columns}
+                emptyMessage="No hay estancias registradas"
+                isLoading={cargando}
+            />
 
             {mostrarPdf && (
                 <PdfViewerModal pdfUrl={pdfUrl} onClose={() => { setMostrarPdf(false); setPdfUrl(null); }} />

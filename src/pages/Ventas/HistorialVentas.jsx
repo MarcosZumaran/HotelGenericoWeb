@@ -2,13 +2,13 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import {
     useReactTable, getCoreRowModel, getSortedRowModel,
-    flexRender, createColumnHelper,
+    createColumnHelper,
 } from '@tanstack/react-table';
 import api from '../../api/axios';
 import swal from '../../lib/swal';
-import { ShoppingCart, FileText, DollarSign, User, CalendarDays } from 'lucide-react';
+import { ShoppingCart, FileText } from 'lucide-react';
 import PdfViewerModal from '../../components/ui/PdfViewerModal';
-import Paginacion from '../../components/ui/Paginacion';
+import DataTable from '../../components/ui/DataTable';
 
 const columnHelper = createColumnHelper();
 
@@ -40,6 +40,16 @@ export default function HistorialVentas() {
 
     const handlePageChange = (newPage) => { setPage(newPage); cargarVentas(newPage); };
 
+    const verPdf = async (idVenta) => {
+        try {
+            const res = await api.get(`/Pdf/Venta/${idVenta}`, { responseType: 'blob' });
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+            setPdfUrl(url); setMostrarPdf(true);
+        } catch (error) {
+            swal.fire('Error', 'No se pudo generar el PDF', 'error');
+        }
+    };
+
     const columns = useMemo(() => [
         columnHelper.accessor('idVenta', {
             header: 'N° Venta',
@@ -68,6 +78,19 @@ export default function HistorialVentas() {
                 return <span className="badge badge-ghost">{metodos[info.getValue()] || info.getValue()}</span>;
             },
         }),
+        columnHelper.display({
+            id: 'pdf',
+            header: 'PDF',
+            cell: ({ row }) => (
+                <button
+                    className="btn btn-ghost btn-xs"
+                    onClick={() => verPdf(row.original.idVenta)}
+                    title="Ver PDF"
+                >
+                    <FileText size={16} />
+                </button>
+            ),
+        }),
     ], []);
 
     const table = useReactTable({
@@ -75,23 +98,12 @@ export default function HistorialVentas() {
         getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel(),
     });
 
-    const verPdf = async (idVenta) => {
-        try {
-            const res = await api.get(`/Pdf/Venta/${idVenta}`, { responseType: 'blob' });
-            const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
-            setPdfUrl(url); setMostrarPdf(true);
-        } catch (error) {
-            swal.fire('Error', 'No se pudo generar el PDF', 'error');
-        }
+    const paginacion = {
+        page,
+        pageSize,
+        totalItems,
+        onPageChange: handlePageChange,
     };
-
-    if (cargando && ventas.length === 0) {
-        return (
-            <div className="flex justify-center items-center h-64">
-                <span className="loading loading-spinner loading-lg text-primary"></span>
-            </div>
-        );
-    }
 
     return (
         <div>
@@ -106,63 +118,14 @@ export default function HistorialVentas() {
             </div>
 
             {/* Tabla */}
-            <div className="card bg-base-100 shadow-sm border border-base-200">
-                <div className="card-body p-0">
-                    <div className="overflow-x-auto">
-                        <table className="table table-zebra w-full">
-                            <thead>
-                                {table.getHeaderGroups().map(hg => (
-                                    <tr key={hg.id}>
-                                        {hg.headers.map(header => (
-                                            <th
-                                                key={header.id}
-                                                onClick={header.column.getToggleSortingHandler()}
-                                                className={`${header.column.getCanSort() ? 'cursor-pointer select-none hover:bg-base-200/50 transition-colors' : ''} text-sm font-semibold text-base-content/80`}
-                                            >
-                                                <div className="flex items-center gap-1">
-                                                    {flexRender(header.column.columnDef.header, header.getContext())}
-                                                    {header.column.getIsSorted() === 'asc' && <span className="text-xs">🔼</span>}
-                                                    {header.column.getIsSorted() === 'desc' && <span className="text-xs">🔽</span>}
-                                                </div>
-                                            </th>
-                                        ))}
-                                        <th className="text-sm font-semibold text-base-content/80">PDF</th>
-                                    </tr>
-                                ))}
-                            </thead>
-                            <tbody ref={parentRef}>
-                                {table.getRowModel().rows.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={columns.length + 1} className="text-center text-base-content/50 py-8">
-                                            No hay ventas registradas
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    table.getRowModel().rows.map(row => (
-                                        <tr key={row.id} className="hover:bg-base-200/50 transition-colors">
-                                            {row.getVisibleCells().map(cell => (
-                                                <td key={cell.id} className="text-base-content/90">
-                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                                </td>
-                                            ))}
-                                            <td>
-                                                <button
-                                                    className="btn btn-ghost btn-xs"
-                                                    onClick={() => verPdf(row.original.idVenta)}
-                                                    title="Ver PDF"
-                                                >
-                                                    <FileText size={16} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                    <Paginacion page={page} pageSize={pageSize} totalItems={totalItems} onPageChange={handlePageChange} />
-                </div>
-            </div>
+            <DataTable
+                table={table}
+                columns={columns}
+                emptyMessage="No hay ventas registradas"
+                paginacion={paginacion}
+                isLoading={cargando}
+                parentRef={parentRef}
+            />
 
             {mostrarPdf && <PdfViewerModal pdfUrl={pdfUrl} onClose={() => { setMostrarPdf(false); setPdfUrl(null); }} />}
         </div>
