@@ -42,7 +42,6 @@ export default function PdfViewerModal({ pdfUrl, onClose }) {
             } else {
                 console.warn('El navegador bloqueó la ventana emergente. Permita las ventanas emergentes para imprimir.');
             }
-            // Limpieza diferida
             setTimeout(() => window.URL.revokeObjectURL(url), 5000);
         } catch (error) {
             console.error('Error al imprimir PDF:', error);
@@ -51,19 +50,20 @@ export default function PdfViewerModal({ pdfUrl, onClose }) {
 
     return (
         <div className="modal modal-open">
-            <div className="modal-box w-full max-w-4xl h-[90vh] flex flex-col">
+            <div className="modal-box w-full max-w-5xl h-[90vh] flex flex-col bg-base-100 border border-base-200 shadow-xl">
+                {/* Barra superior */}
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-bold">Vista previa del comprobante</h3>
                     <div className="flex gap-2">
                         <button
-                            className="btn btn-primary btn-sm"
+                            className="btn btn-primary btn-sm gap-1"
                             onClick={handleDownload}
                             disabled={descargando}
                         >
                             {descargando ? 'Descargando...' : 'Descargar'}
                         </button>
                         <button
-                            className="btn btn-secondary btn-sm"
+                            className="btn btn-secondary btn-sm gap-1"
                             onClick={handlePrint}
                         >
                             Imprimir
@@ -73,7 +73,9 @@ export default function PdfViewerModal({ pdfUrl, onClose }) {
                         </button>
                     </div>
                 </div>
-                <div className="flex-1 overflow-hidden">
+
+                {/* Visor de PDF */}
+                <div className="flex-1 overflow-hidden rounded-lg border border-base-300">
                     <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
                         <Viewer fileUrl={pdfUrl} />
                     </Worker>

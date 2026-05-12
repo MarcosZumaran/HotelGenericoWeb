@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/axios';
+import { useSignalR } from '../../hooks/useSignalR';
+import toast from 'react-hot-toast';
 import { Bed, DollarSign, TrendingUp, Users } from 'lucide-react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import {
@@ -64,6 +66,34 @@ export default function Dashboard() {
 
     cargarDatos();
   }, []);
+
+  useSignalR('EstadoHabitacionCambiado', (data) => {
+    toast.success(`🔄 Habitación ${data.numero} ahora está: ${data.nuevoEstado}`);
+    const recargar = async () => {
+      try {
+        const [habRes, cierreRes, topRes] = await Promise.all([
+          api.get('/Reporte/estado-habitaciones'),
+          api.get('/Reporte/cierre-caja', { params: { fecha: new Date().toISOString().split('T')[0] } }),
+          api.get('/Reporte/top-productos', { params: { dias: 30 } }),
+        ]);
+        const habitaciones = habRes.data;
+        const cierre = cierreRes.data;
+        setDatos(prev => ({
+          ...prev,
+          totalHabitaciones: habitaciones.length,
+          ocupadas: habitaciones.filter((h) => h.estado === 'Ocupada').length,
+          disponibles: habitaciones.filter((h) => h.estado === 'Disponible').length,
+          enLimpieza: habitaciones.filter((h) => h.estado === 'Limpieza').length,
+          ingresosHoy: cierre.reduce((sum, item) => sum + (item.ingresos || 0), 0),
+          estadoHabitaciones: habitaciones,
+        }));
+        setTopProductos(topRes.data);
+      } catch (error) {
+        console.error('Error al recargar datos:', error);
+      }
+    };
+    recargar();
+  });
 
   const datosOcupacion = {
     labels: ['Ocupadas', 'Disponibles', 'Limpieza'],

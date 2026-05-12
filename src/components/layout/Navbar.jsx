@@ -1,5 +1,6 @@
 import { useAuth } from '../../contexts/AuthContext';
 import useTheme from '../../hooks/useTheme';
+import ConnectionIndicator from '../ui/ConnectionIndicator';
 import { LogOut, Menu, Sun, Moon } from 'lucide-react';
 
 export default function Navbar() {
@@ -18,6 +19,8 @@ export default function Navbar() {
                 <button className="btn btn-ghost btn-circle" onClick={toggleTheme}>
                     {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
                 </button>
+
+                <ConnectionIndicator />
 
                 <div className="hidden sm:flex items-center gap-2">
                     <div className="avatar placeholder">

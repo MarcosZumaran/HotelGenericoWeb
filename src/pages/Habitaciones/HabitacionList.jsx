@@ -17,7 +17,8 @@ import {
   CheckCircle, Wrench, RotateCcw, UserPlus, DoorOpen,
   ShoppingCart
 } from 'lucide-react';
-import useSignalR from '../../hooks/useSignalR';
+import { useSignalR } from '../../hooks/useSignalR';
+import toast from 'react-hot-toast';
 
 // Estilos de fondo y borde para cada estado
 const estilosCarta = {
@@ -160,8 +161,23 @@ export default function HabitacionList() {
   }, []);
 
   // SignalR: escuchar cambios de estado en tiempo real
-  useSignalR(() => {
-    cargarDatos();
+  useSignalR('EstadoHabitacionCambiado', (data) => {
+    toast.success(`🔄 Habitación ${data.numero} ahora está: ${data.nuevoEstado}`);
+    const recargar = async () => {
+      try {
+        const [habRes, tiposRes, productosRes] = await Promise.all([
+          api.get('/Habitacion/estado-actual'),
+          api.get('/TiposHabitacion'),
+          api.get('/Producto'),
+        ]);
+        setHabitaciones(habRes.data);
+        setTipos(tiposRes.data);
+        setProductos(productosRes.data);
+      } catch (error) {
+        console.error('Error al recargar datos:', error);
+      }
+    };
+    recargar();
   });
 
   const ejecutarAccion = async (accion) => {

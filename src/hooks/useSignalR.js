@@ -1,33 +1,49 @@
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import * as signalR from '@microsoft/signalr';
 
-export default function useSignalR(onMessageReceived) {
-    const connectionRef = useRef(null);
+const API_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5054';
 
-    useEffect(() => {
-        const connection = new signalR.HubConnectionBuilder()
-            .withUrl(`/hub/habitaciones`, {
-                accessTokenFactory: () => localStorage.getItem('token')
-            })
-            .withAutomaticReconnect()
-            .build();
+export function useSignalR(eventName, callback) {
+  const [isConnected, setIsConnected] = useState(false);
+  const connectionRef = useRef(null);
+  const callbackRef = useRef(callback);
 
-        connection.on('EstadoHabitacionCambiado', (data) => {
-            if (onMessageReceived) onMessageReceived(data);
-        });
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
 
-        connection.start()
-            .then(() => console.log('🟢 SignalR conectado'))
-            .catch(err => console.error('Error al conectar SignalR:', err));
+  useEffect(() => {
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(`${API_BASE_URL}/hotelhub`)
+      .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
+      .configureLogging(signalR.LogLevel.Warning)
+      .build();
 
-        connectionRef.current = connection;
+    const handler = (data) => {
+      if (callbackRef.current) {
+        callbackRef.current(data);
+      }
+    };
 
-        return () => {
-            if (connectionRef.current) {
-                connectionRef.current.stop();
-            }
-        };
-    }, []);
+    connection.on(eventName, handler);
 
-    return connectionRef;
+    connection.start()
+      .then(() => setIsConnected(true))
+      .catch(err => console.error('SignalR connection error:', err));
+
+    connection.onreconnecting(() => setIsConnected(false));
+    connection.onreconnected(() => setIsConnected(true));
+    connection.onclose(() => setIsConnected(false));
+
+    connectionRef.current = connection;
+
+    return () => {
+      connection.off(eventName, handler);
+      connection.stop();
+    };
+  }, [eventName]);
+
+  return { isConnected, connection: connectionRef.current };
 }
+
+export default useSignalR;

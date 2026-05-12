@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import api from '../../api/axios';
+import { useSignalR } from '../../hooks/useSignalR';
+import toast from 'react-hot-toast';
 import { TrendingUp, CalendarDays, DollarSign, FileText, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
@@ -96,6 +98,13 @@ export default function CierreCaja() {
     cargarCierre(fecha);
     cargarEstadoEnvio(fecha);
   }, [fecha]);
+
+  useSignalR('CierreCajaEnviado', (data) => {
+    const fechaFormateada = new Date(data.fecha).toLocaleDateString('es-PE');
+    toast.success(`📤 Cierre de caja del ${fechaFormateada} enviado a SUNAT.`);
+    cargarCierre(fecha);
+    cargarEstadoEnvio(fecha);
+  });
 
   const totalGeneral = datos.reduce((sum, item) => sum + (item.ingresos || 0), 0);
 

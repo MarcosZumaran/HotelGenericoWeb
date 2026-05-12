@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/axios';
+import { useSignalR } from '../../hooks/useSignalR';
+import toast from 'react-hot-toast';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { Receipt, Eye, SendHorizontal, FileText } from 'lucide-react';
 import swal from '../../lib/swal';
@@ -64,6 +66,14 @@ export default function ComprobanteList() {
   };
 
   useEffect(() => { cargarComprobantes(); }, [page]);
+
+  useSignalR('ComprobanteEmitido', (data) => {
+    toast(`🧾 Nuevo comprobante: ${data.tipo} #${data.idComprobante} - S/ ${data.monto.toFixed(2)}`, {
+      icon: '📄',
+      duration: 4000,
+    });
+    cargarComprobantes(page);
+  });
 
   const handlePageChange = (newPage) => { setPage(newPage); cargarComprobantes(newPage); };
 
