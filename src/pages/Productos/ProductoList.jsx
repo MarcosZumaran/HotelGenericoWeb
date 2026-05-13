@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { productoSchema } from './productoSchema';
@@ -7,15 +7,18 @@ import api from '../../api/axios';
 import { Plus, Edit, Trash2, Package } from 'lucide-react';
 import swal from '../../lib/swal';
 import LoadingButton from '../../components/ui/LoadingButton';
-import { useMemo } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
-  flexRender,
+  getFilteredRowModel,
   createColumnHelper,
 } from '@tanstack/react-table';
 import DataTable from '../../components/ui/DataTable';
+import TableFilters from '../../components/ui/TableFilters';
+import { isBefore, isAfter, isSameDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+
+const columnHelper = createColumnHelper();
 
 export default function ProductoList() {
   const { user } = useAuth();
@@ -26,6 +29,8 @@ export default function ProductoList() {
   const [editando, setEditando] = useState(null);
   const [mostrarModal, setMostrarModal] = useState(false);
   const [sorting, setSorting] = useState([]);
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState({ type: 'none', date: null, dateEnd: null });
 
   const {
     register,
@@ -47,7 +52,32 @@ export default function ProductoList() {
     }
   };
 
-  const columnHelper = createColumnHelper();
+  useEffect(() => { cargarProductos(); }, []);
+
+  // Filtro por fecha sobre created_at (opcional)
+  const dataFiltrada = useMemo(() => {
+    let result = productos;
+
+    if (dateFilter && dateFilter.type !== 'none' && dateFilter.date) {
+      result = result.filter(item => {
+        const itemDate = item.createdAt ? new Date(item.createdAt) : (item.created_at ? new Date(item.created_at) : null);
+        if (!itemDate) return true;
+        const filterDate = dateFilter.date;
+        if (dateFilter.type === 'before') return isBefore(itemDate, startOfDay(filterDate));
+        if (dateFilter.type === 'after') return isAfter(itemDate, endOfDay(filterDate));
+        if (dateFilter.type === 'on') return isSameDay(itemDate, filterDate);
+        if (dateFilter.type === 'range') {
+          if (!dateFilter.dateEnd) return true;
+          return isWithinInterval(itemDate, {
+            start: startOfDay(filterDate),
+            end: endOfDay(dateFilter.dateEnd)
+          });
+        }
+        return true;
+      });
+    }
+    return result;
+  }, [productos, dateFilter]);
 
   const columns = useMemo(
     () => [
@@ -83,19 +113,16 @@ export default function ProductoList() {
   );
 
   const table = useReactTable({
-    data: productos,
+    data: dataFiltrada,
     columns,
-    state: { sorting },
+    state: { sorting, globalFilter },
     onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
   });
 
-  useEffect(() => {
-    cargarProductos();
-  }, []);
-
-  // Modal
   const abrirModalCrear = () => {
     setEditando(null);
     reset({
@@ -206,6 +233,16 @@ export default function ProductoList() {
           </button>
         )}
       </div>
+
+      {/* Filtros */}
+      <TableFilters
+        globalFilter={globalFilter}
+        setGlobalFilter={setGlobalFilter}
+        dateFilter={dateFilter}
+        setDateFilter={setDateFilter}
+        placeholder="Buscar por nombre, código SUNAT..."
+        showDateFilter={true}
+      />
 
       {/* Tabla */}
       <DataTable

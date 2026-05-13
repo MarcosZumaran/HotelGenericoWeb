@@ -15,17 +15,18 @@ import { habitacionSchema } from './habitacionSchema';
 import {
   Plus, Edit, Trash2, Hash, DollarSign, Layers,
   CheckCircle, Wrench, RotateCcw, UserPlus, DoorOpen,
-  ShoppingCart
+  ShoppingCart, CalendarX, UserCheck, Search, Save
 } from 'lucide-react';
 import { useSignalR } from '../../hooks/useSignalR';
 import toast from 'react-hot-toast';
+import { consultarDni } from '../../api/verifica_pe';
 
-// Estilos de fondo y borde para cada estado
 const estilosCarta = {
   1: 'bg-success/10 border-success/30 hover:bg-success/20 hover:border-success/50',
   2: 'bg-warning/10 border-warning/30 hover:bg-warning/20 hover:border-warning/50',
   3: 'bg-info/10 border-info/30 hover:bg-info/20 hover:border-info/50',
   4: 'bg-error/10 border-error/30 hover:bg-error/20 hover:border-error/50',
+  5: 'bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20 hover:border-orange-500/50',
 };
 
 const coloresInsignia = {
@@ -33,9 +34,9 @@ const coloresInsignia = {
   2: 'badge-warning',
   3: 'badge-info',
   4: 'badge-error',
+  5: 'badge-warning',
 };
 
-// Pequeña animación de aparición para las tarjetas
 const cardAnimation = "animate-[fadeInScale_0.2s_ease-out]";
 
 export default function HabitacionList() {
@@ -52,7 +53,6 @@ export default function HabitacionList() {
   const [cambiandoEstado, setCambiandoEstado] = useState(null);
   const [cargandoAccion, setCargandoAccion] = useState(false);
 
-  // Estados para el formulario de consumo
   const [productoSeleccionado, setProductoSeleccionado] = useState('');
   const [cantidadConsumo, setCantidadConsumo] = useState(1);
   const [agregandoConsumo, setAgregandoConsumo] = useState(false);
@@ -61,17 +61,20 @@ export default function HabitacionList() {
   const [consumos, setConsumos] = useState([]);
   const [estanciaActiva, setEstanciaActiva] = useState(null);
 
-  // Estado para las reservas del calendario
   const [reservas, setReservas] = useState([]);
-
-  // Estado para el tooltip del calendario
   const [tooltip, setTooltip] = useState({ visible: false, contenido: null, x: 0, y: 0 });
 
   const [idEditando, setIdEditando] = useState(null);
   const [editarCantidad, setEditarCantidad] = useState(1);
   const [idEliminando, setIdEliminando] = useState(null);
 
-  // Formulario de edición/creación
+  // NUEVOS ESTADOS PARA BÚSQUEDA DE CLIENTES
+  const [busquedaCliente, setBusquedaCliente] = useState('');
+  const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
+  const [clienteEncontrado, setClienteEncontrado] = useState(null);
+  const [consultandoDniBoton, setConsultandoDniBoton] = useState(false);
+  const [guardandoCliente, setGuardandoCliente] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -81,7 +84,6 @@ export default function HabitacionList() {
     resolver: zodResolver(habitacionSchema),
   });
 
-  // Datos del formulario de Entrada
   const [datosEntrada, setDatosEntrada] = useState({
     tipoDocumento: '1',
     documento: '',
@@ -115,24 +117,32 @@ export default function HabitacionList() {
     try {
       const res = await api.get(`/Estancia/reservas/${idHabitacion}`);
       const eventos = res.data.map(r => ({
-        title: `${r.clienteNombre ?? 'Reserva'}`,
+        title: r.clienteNombre ?? 'Reserva',
         start: new Date(r.fechaEntradaPrevista),
         end: new Date(r.fechaSalidaPrevista),
-        backgroundColor: r.estado === 'Confirmada' ? '#22c55e' : r.estado === 'Entrada realizada' ? '#f59e0b' : '#6b7280',
-        borderColor: r.estado === 'Confirmada' ? '#16a34a' : r.estado === 'Entrada realizada' ? '#d97706' : '#4b5563',
+        backgroundColor:
+          r.estado === 'Cancelada' ? '#6b7280' :
+            (r.esNoShow === true ? '#dc2626' :
+              (r.estado === 'Confirmada' &&
+                new Date(r.fechaEntradaPrevista).toDateString() === new Date().toDateString()
+                ? '#f59e0b'
+                : '#22c55e')),
+        borderColor: 'transparent',
         extendedProps: {
           idReserva: r.idReserva,
           cliente: r.clienteNombre,
           entrada: r.fechaEntradaPrevista,
           salida: r.fechaSalidaPrevista,
           monto: r.montoTotal,
-          estado: r.estado
+          estado: r.estado,
+          documento: r.documentoCliente,
+          observaciones: r.observaciones,
+          esNoShow: r.esNoShow
         }
       }));
       setReservas(eventos);
     } catch (error) {
       console.error('Error al cargar reservas:', error);
-      setReservas([]);
     }
   };
 
@@ -160,47 +170,101 @@ export default function HabitacionList() {
     cargarDatos();
   }, []);
 
-  // SignalR: escuchar cambios de estado en tiempo real
   useSignalR('EstadoHabitacionCambiado', (data) => {
-    toast.success(`🔄 Habitación ${data.numero} ahora está: ${data.nuevoEstado}`);
-    const recargar = async () => {
-      try {
-        const [habRes, tiposRes, productosRes] = await Promise.all([
-          api.get('/Habitacion/estado-actual'),
-          api.get('/TiposHabitacion'),
-          api.get('/Producto'),
-        ]);
-        setHabitaciones(habRes.data);
-        setTipos(tiposRes.data);
-        setProductos(productosRes.data);
-      } catch (error) {
-        console.error('Error al recargar datos:', error);
-      }
-    };
-    recargar();
+    toast.success(`Habitacion ${data.numero} ahora esta: ${data.nuevoEstado}`);
+    cargarDatos();
   });
 
+  // BÚSQUEDA DE CLIENTES
+  const buscarClientes = async (termino) => {
+    setBusquedaCliente(termino);
+    if (termino.length < 2) {
+      setResultadosBusqueda([]);
+      return;
+    }
+    try {
+      const res = await api.get('/Cliente/buscar', { params: { termino } });
+      setResultadosBusqueda(res.data.slice(0, 5));
+    } catch {
+      setResultadosBusqueda([]);
+    }
+  };
+
+  const seleccionarCliente = (cliente) => {
+    setClienteEncontrado(cliente);
+    setDatosEntrada(prev => ({
+      ...prev,
+      tipoDocumento: cliente.tipoDocumento,
+      documento: cliente.documento,
+      nombres: cliente.nombres,
+      apellidos: cliente.apellidos,
+      telefono: cliente.telefono ?? '',
+    }));
+    setResultadosBusqueda([]);
+    setBusquedaCliente('');
+  };
+
+  // VERIFICAR DNI
+  const verificarDni = async () => {
+    if (!datosEntrada.documento || datosEntrada.documento.length !== 8) return;
+    setConsultandoDniBoton(true);
+    try {
+      const data = await consultarDni(datosEntrada.documento);
+      setDatosEntrada(prev => ({
+        ...prev,
+        nombres: data.names,
+        apellidos: `${data.paternalSurname} ${data.maternalSurname}`,
+      }));
+      toast.success('Datos del DNI verificados', { duration: 3000 });
+    } catch (err) {
+      toast.error('No se pudo verificar el DNI', { duration: 3000 });
+    } finally {
+      setConsultandoDniBoton(false);
+    }
+  };
+
+  // GUARDAR CLIENTE
+  const guardarClienteYContinuar = async () => {
+    if (!datosEntrada.documento || !datosEntrada.nombres || !datosEntrada.apellidos) {
+      toast.error('Faltan datos del cliente', { duration: 3000 });
+      return;
+    }
+    setGuardandoCliente(true);
+    try {
+      const res = await api.post('/Cliente', {
+        tipoDocumento: datosEntrada.tipoDocumento,
+        documento: datosEntrada.documento,
+        nombres: datosEntrada.nombres,
+        apellidos: datosEntrada.apellidos,
+        telefono: datosEntrada.telefono || null,
+      });
+      const nuevoCliente = res.data;
+      setClienteEncontrado(nuevoCliente);
+      toast.success('Cliente guardado correctamente', { duration: 3000 });
+    } catch (err) {
+      toast.error('Error al guardar el cliente', { duration: 3000 });
+    } finally {
+      setGuardandoCliente(false);
+    }
+  };
+
+  // ACCIONES
   const ejecutarAccion = async (accion) => {
     if (!habitacionSeleccionada) return;
     switch (accion) {
       case 'CheckIn':
-        setModalAbierto('entrada');
+        if (habitacionSeleccionada.idEstado === 5) {
+          await ejecutarEntradaReservaDirecta();
+        } else {
+          setModalAbierto('entrada');
+        }
         break;
-      case 'CheckOut':
-      case 'PasarLimpieza':
-        setModalAbierto('salida');
-        break;
-      case 'Mantenimiento':
-        await cambiarEstado(habitacionSeleccionada.idHabitacion, 4, 'Poner en Mantenimiento');
-        break;
-      case 'FinalizarLimpieza':
-        await cambiarEstado(habitacionSeleccionada.idHabitacion, 1, 'Finalizar limpieza');
-        break;
-      case 'Habilitar':
-        await cambiarEstado(habitacionSeleccionada.idHabitacion, 1, 'Habilitar habitación');
-        break;
-      default:
-        break;
+      case 'CheckOut': setModalAbierto('salida'); break;
+      case 'Mantenimiento': await cambiarEstado(habitacionSeleccionada.idHabitacion, 4, 'Poner en Mantenimiento'); break;
+      case 'FinalizarLimpieza': await cambiarEstado(habitacionSeleccionada.idHabitacion, 1, 'Finalizar limpieza'); break;
+      case 'Habilitar': await cambiarEstado(habitacionSeleccionada.idHabitacion, 1, 'Habilitar habitación'); break;
+      case 'CancelarReserva': await cancelarReserva(habitacionSeleccionada); break;
+      default: break;
     }
   };
 
@@ -218,17 +282,99 @@ export default function HabitacionList() {
     }
   };
 
-  const ejecutarEntrada = async () => {
+  const cancelarReserva = async (habitacion) => {
+    const reservaHoy = reservas.find(r =>
+      new Date(r.start).toDateString() === new Date().toDateString() && r.extendedProps?.estado === 'Confirmada'
+    );
+    if (!reservaHoy) {
+      swal.fire('Error', 'No se encontró una reserva activa para hoy', 'error');
+      return;
+    }
+    try {
+      await api.put(`/Estancia/reserva/${reservaHoy.extendedProps.idReserva}/cancelar`);
+      swal.fire('Cancelada', 'La reserva ha sido cancelada', 'success');
+      cargarDatos();
+      setModalAbierto(null);
+    } catch (error) {
+      swal.fire('Error', error.response?.data?.mensaje || 'Error al cancelar la reserva', 'error');
+    }
+  };
+
+  const ejecutarEntradaReservaDirecta = async () => {
+    const reservaHoy = reservas.find(r =>
+      r.extendedProps?.estado === 'Confirmada' &&
+      new Date(r.start).toDateString() === new Date().toDateString()
+    );
+
+    if (!reservaHoy) {
+      swal.fire('Error', 'No se encontró una reserva activa para hoy', 'error');
+      return;
+    }
+
+    const confirmacion = await swal.fire({
+      title: 'Registrar entrada',
+      text: `¿Confirmar check‑in del cliente ${reservaHoy.extendedProps.cliente}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Sí, registrar entrada',
+      cancelButtonText: 'Cancelar',
+    });
+
+    if (!confirmacion.isConfirmed) return;
+
     setCargandoAccion(true);
     try {
-      const res = await api.post('/Estancia/checkin', {
+      await api.post('/Estancia/checkin', {
+        idHabitacion: habitacionSeleccionada.idHabitacion,
+        idReserva: reservaHoy.extendedProps.idReserva,
+        fechaCheckoutPrevista: reservaHoy.extendedProps.salida,
+        tipoDocumento: '1',
+        documento: '',
+        nombres: '',
+        apellidos: '',
+        telefono: '',
+        metodoPago: '005',
+        usarClienteAnonimo: false,
+        guardarCliente: !!clienteEncontrado,
+        idClienteExistente: clienteEncontrado?.idCliente || null,
+      });
+
+      swal.fire({
+        icon: 'success',
+        title: 'Entrada registrada',
+        text: 'El cliente ha sido registrado exitosamente.',
+        confirmButtonText: 'Aceptar',
+      });
+
+      cargarDatos();
+      setModalAbierto(null);
+    } catch (error) {
+      swal.fire('Error', error.response?.data?.mensaje || 'Error al realizar el check‑in', 'error');
+    } finally {
+      setCargandoAccion(false);
+    }
+  };
+
+  // ENTRADA (WALK-IN O RESERVA)
+  const ejecutarEntradaApi = async () => {
+    setCargandoAccion(true);
+    try {
+      const reservaActiva = reservas.find(r =>
+        r.extendedProps?.estado === 'Confirmada' &&
+        new Date(r.start).toDateString() === new Date().toDateString()
+      );
+      const payload = {
         idHabitacion: habitacionSeleccionada.idHabitacion,
         ...datosEntrada,
         fechaCheckoutPrevista: datosEntrada.fechaSalidaPrevista,
-      });
+        idReserva: reservaActiva?.extendedProps?.idReserva || null,
+        guardarCliente: !!clienteEncontrado,
+        idClienteExistente: clienteEncontrado?.idCliente || null,
+      };
+      const res = await api.post('/Estancia/checkin', payload);
       swal.fire({
         icon: 'success',
-        title: '¡Entrada exitosa!',
+        title: 'Entrada exitosa!',
         html: `<p>Entrada N° <strong>${res.data.idEstancia}</strong></p><p>Monto: <strong>S/ ${res.data.montoTotal.toFixed(2)}</strong></p>`,
         confirmButtonText: 'Aceptar',
       });
@@ -236,6 +382,36 @@ export default function HabitacionList() {
       setModalAbierto(null);
     } catch (error) {
       swal.fire('Error', error.response?.data?.mensaje || 'Error al realizar la Entrada', 'error');
+    } finally {
+      setCargandoAccion(false);
+    }
+  };
+
+  // RESERVA
+  const ejecutarReservaApi = async () => {
+    setCargandoAccion(true);
+    try {
+      const payload = {
+        idHabitacion: habitacionSeleccionada.idHabitacion,
+        ...datosEntrada,
+        fechaEntradaPrevista: datosEntrada.fechaEntradaPrevista,
+        fechaSalidaPrevista: datosEntrada.fechaSalidaPrevista,
+        metodoPago: datosEntrada.metodoPago,
+        usarClienteAnonimo: datosEntrada.usarClienteAnonimo,
+        guardarCliente: !!clienteEncontrado,
+        idClienteExistente: clienteEncontrado?.idCliente || null,
+      };
+      const res = await api.post('/Estancia/reserva', payload);
+      swal.fire({
+        icon: 'success',
+        title: 'Reserva creada!',
+        html: `<p>Reserva N° <strong>${res.data.idReserva}</strong></p><p>Entrada: <strong>${new Date(datosEntrada.fechaEntradaPrevista).toLocaleDateString('es-PE')}</strong></p>`,
+        confirmButtonText: 'Aceptar',
+      });
+      cargarDatos();
+      setModalAbierto(null);
+    } catch (error) {
+      swal.fire('Error', error.response?.data?.mensaje || 'Error al crear la reserva', 'error');
     } finally {
       setCargandoAccion(false);
     }
@@ -254,36 +430,6 @@ export default function HabitacionList() {
       setModalAbierto(null);
     } catch (error) {
       swal.fire('Error', error.response?.data?.mensaje || 'Error al realizar la Salida', 'error');
-    } finally {
-      setCargandoAccion(false);
-    }
-  };
-
-  const ejecutarReserva = async () => {
-    setCargandoAccion(true);
-    try {
-      const res = await api.post('/Estancia/reserva', {
-        idHabitacion: habitacionSeleccionada.idHabitacion,
-        tipoDocumento: datosEntrada.tipoDocumento,
-        documento: datosEntrada.documento,
-        nombres: datosEntrada.nombres,
-        apellidos: datosEntrada.apellidos,
-        telefono: datosEntrada.telefono,
-        fechaEntradaPrevista: datosEntrada.fechaEntradaPrevista,
-        fechaSalidaPrevista: datosEntrada.fechaSalidaPrevista,
-        metodoPago: datosEntrada.metodoPago,
-        usarClienteAnonimo: datosEntrada.usarClienteAnonimo,
-      });
-      swal.fire({
-        icon: 'success',
-        title: '¡Reserva creada!',
-        html: `<p>Reserva N° <strong>${res.data.idReserva}</strong></p><p>Entrada: <strong>${new Date(datosEntrada.fechaEntradaPrevista).toLocaleDateString('es-PE')}</strong></p>`,
-        confirmButtonText: 'Aceptar',
-      });
-      cargarDatos();
-      setModalAbierto(null);
-    } catch (error) {
-      swal.fire('Error', error.response?.data?.mensaje || 'Error al crear la reserva', 'error');
     } finally {
       setCargandoAccion(false);
     }
@@ -350,7 +496,7 @@ export default function HabitacionList() {
 
   const eliminarHabitacion = async (id) => {
     const confirmacion = await swal.fire({
-      title: '¿Eliminar habitación?',
+      title: 'Eliminar habitación?',
       text: 'Esta acción no se puede deshacer',
       icon: 'warning',
       showCancelButton: true,
@@ -420,7 +566,7 @@ export default function HabitacionList() {
               <p className="text-sm mb-1 flex items-center gap-1 text-base-content/80"><Layers size={14} /> {h.nombreTipo}</p>
               <p className="text-sm mb-1 flex items-center gap-1 text-base-content/80"><Hash size={14} /> Piso: {h.piso ?? '—'}</p>
               <p className="text-lg font-bold mt-auto flex items-center gap-1 text-base-content"><DollarSign size={16} /> S/ {h.precioNoche.toFixed(2)}</p>
-              {h.clienteHuesped && <p className="text-xs text-base-content/50 mt-1 truncate">👤 {h.clienteHuesped}</p>}
+              {h.clienteHuesped && <p className="text-xs text-base-content/50 mt-1 truncate">{h.clienteHuesped}</p>}
             </div>
           </div>
         ))}
@@ -441,7 +587,8 @@ export default function HabitacionList() {
             <div className={`relative p-6 rounded-t-2xl border-b border-base-300 flex-shrink-0 ${habitacionSeleccionada.idEstado === 1 ? 'bg-success/10' :
               habitacionSeleccionada.idEstado === 2 ? 'bg-warning/10' :
                 habitacionSeleccionada.idEstado === 3 ? 'bg-info/10' :
-                  'bg-error/10'
+                  habitacionSeleccionada.idEstado === 5 ? 'bg-orange-500/10' :
+                    'bg-error/10'
               }`}>
               <div className="flex items-start justify-between">
                 <div>
@@ -533,6 +680,28 @@ export default function HabitacionList() {
                   </div>
                 )}
 
+                {/* Reserva activa */}
+                {reservas.filter(r =>
+                  r.extendedProps?.estado === 'Confirmada' &&
+                  new Date(r.start).toDateString() === new Date().toDateString()
+                ).length > 0 && (
+                    <div className="card bg-base-200/50 border border-orange-300 shadow-sm">
+                      <div className="card-body p-4">
+                        <h4 className="card-title text-base mb-2">Reserva Activa</h4>
+                        <div className="space-y-2">
+                          <p className="text-sm"><strong>Cliente:</strong> {reservas[0].extendedProps.cliente}</p>
+                          <p className="text-sm"><strong>Documento:</strong> {reservas[0].extendedProps.documento}</p>
+                          <p className="text-sm"><strong>Entrada prevista:</strong> {new Date(reservas[0].start).toLocaleDateString('es-PE')}</p>
+                          <p className="text-sm"><strong>Salida prevista:</strong> {new Date(reservas[0].end).toLocaleDateString('es-PE')}</p>
+                          <p className="text-sm"><strong>Monto reservado:</strong> S/ {parseFloat(reservas[0].extendedProps.monto).toFixed(2)}</p>
+                          {reservas[0].extendedProps.observaciones && (
+                            <p className="text-sm"><strong>Observaciones:</strong> {reservas[0].extendedProps.observaciones}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                 {/* Acciones disponibles */}
                 <div className="card bg-base-200/50 border border-base-300 shadow-sm">
                   <div className="card-body p-4">
@@ -553,30 +722,31 @@ export default function HabitacionList() {
                       )}
                       {habitacionSeleccionada.accionesDisponibles?.map((accion) => {
                         const etiqueta =
-                          accion === 'CheckIn' ? 'Entrada' :
+                          accion === 'CheckIn' ? 'Registrar entrada' :
                             accion === 'CheckOut' ? 'Salida' :
-                              accion === 'PasarLimpieza' ? 'Pasar a Limpieza' :
-                                accion === 'Mantenimiento' ? 'Mantenimiento' :
-                                  accion === 'FinalizarLimpieza' ? 'Finalizar Limpieza' :
-                                    accion === 'Habilitar' ? 'Habilitar' : accion;
+                              accion === 'Mantenimiento' ? 'Mantenimiento' :
+                                accion === 'FinalizarLimpieza' ? 'Finalizar Limpieza' :
+                                  accion === 'Habilitar' ? 'Habilitar' :
+                                    accion === 'CancelarReserva' ? 'Cancelar reserva' : accion;
                         return (
                           <button
                             key={accion}
                             className={`btn btn-sm gap-1 ${accion === 'CheckIn' ? 'btn-primary' :
-                              accion === 'CheckOut' || accion === 'PasarLimpieza' ? 'btn-success' :
+                              accion === 'CheckOut' ? 'btn-success' :
                                 accion === 'Mantenimiento' ? 'btn-warning' :
                                   accion === 'FinalizarLimpieza' ? 'btn-info' :
-                                    'btn-primary'
+                                    accion === 'CancelarReserva' ? 'btn-error' :
+                                      'btn-primary'
                               }`}
                             onClick={() => ejecutarAccion(accion)}
                             disabled={cambiandoEstado === habitacionSeleccionada.idHabitacion}
                           >
-                            {accion === 'CheckIn' && <UserPlus size={16} />}
+                            {accion === 'CheckIn' && <UserCheck size={16} />}
                             {accion === 'CheckOut' && <DoorOpen size={16} />}
-                            {accion === 'PasarLimpieza' && <CheckCircle size={16} />}
                             {accion === 'Mantenimiento' && <Wrench size={16} />}
                             {accion === 'FinalizarLimpieza' && <CheckCircle size={16} />}
                             {accion === 'Habilitar' && <RotateCcw size={16} />}
+                            {accion === 'CancelarReserva' && <CalendarX size={16} />}
                             {etiqueta}
                           </button>
                         );
@@ -717,7 +887,7 @@ export default function HabitacionList() {
                                             disabled={idEliminando === c.idItem}
                                             onClick={async () => {
                                               const confirmacion = await swal.fire({
-                                                title: '¿Eliminar consumo?',
+                                                title: 'Eliminar consumo?',
                                                 text: 'Esta acción no se puede deshacer',
                                                 icon: 'warning',
                                                 showCancelButton: true,
@@ -848,7 +1018,10 @@ export default function HabitacionList() {
                     <p><span className="text-base-content/70">Entrada:</span> {tooltip.contenido.entrada}</p>
                     <p><span className="text-base-content/70">Salida:</span> {tooltip.contenido.salida}</p>
                     <p><span className="text-base-content/70">Monto:</span> S/ {parseFloat(tooltip.contenido.monto).toFixed(2)}</p>
-                    <span className={`badge badge-sm ${tooltip.contenido.estado === 'Confirmada' ? 'badge-success' : 'badge-warning'}`}>
+                    <span className={`badge badge-sm ${tooltip.contenido.estado === 'Confirmada' ? 'badge-success' :
+                      tooltip.contenido.estado === 'Cancelada' ? 'badge-ghost' :
+                        'badge-warning'
+                      }`}>
                       {tooltip.contenido.estado}
                     </span>
                   </div>
@@ -877,6 +1050,40 @@ export default function HabitacionList() {
                 </div>
               </label>
             </div>
+
+            {/* BUSCADOR DE CLIENTES */}
+            <div className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-5 w-5 text-base-content/40" />
+                <input
+                  type="text"
+                  placeholder="Buscar cliente por nombre, apellido o DNI..."
+                  className="input input-bordered w-full pl-10"
+                  value={busquedaCliente}
+                  onChange={(e) => buscarClientes(e.target.value)}
+                />
+              </div>
+              {resultadosBusqueda.length > 0 && (
+                <div className="mt-2 card bg-base-100 border shadow-md max-h-40 overflow-y-auto">
+                  {resultadosBusqueda.map(cliente => (
+                    <div
+                      key={cliente.idCliente}
+                      className="p-2 hover:bg-base-200 cursor-pointer flex items-center gap-2"
+                      onClick={() => seleccionarCliente(cliente)}
+                    >
+                      <UserCheck size={16} className="text-primary" />
+                      <div>
+                        <p className="font-medium">{cliente.nombres} {cliente.apellidos}</p>
+                        <p className="text-xs text-base-content/60">
+                          {cliente.tipoDocumento === '1' ? 'DNI' : 'PAS'}: {cliente.documento}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className={`grid grid-cols-1 ${modoEntrada === 'reserva' ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
               <div>
                 <label className="label">Tipo Documento</label>
@@ -885,13 +1092,31 @@ export default function HabitacionList() {
                   <option value="7">Pasaporte</option>
                 </select>
                 <label className="label mt-2">Número Documento</label>
-                <input className="input input-bordered w-full" value={datosEntrada.documento} onChange={e => setDatosEntrada({ ...datosEntrada, documento: e.target.value })} />
+                <div className="flex gap-2">
+                  <input className="input input-bordered flex-1" value={datosEntrada.documento} onChange={e => setDatosEntrada({ ...datosEntrada, documento: e.target.value })} />
+                  {datosEntrada.tipoDocumento === '1' && datosEntrada.documento.length === 8 && (
+                    <button type="button" className="btn btn-outline btn-primary" onClick={verificarDni} disabled={consultandoDniBoton}>
+                      {consultandoDniBoton ? <span className="loading loading-spinner loading-xs"></span> : <CheckCircle size={18} />}
+                      Consultar DNI
+                    </button>
+                  )}
+                </div>
                 <label className="label mt-2">Nombres</label>
                 <input className="input input-bordered w-full" value={datosEntrada.nombres} onChange={e => setDatosEntrada({ ...datosEntrada, nombres: e.target.value })} />
                 <label className="label mt-2">Apellidos</label>
                 <input className="input input-bordered w-full" value={datosEntrada.apellidos} onChange={e => setDatosEntrada({ ...datosEntrada, apellidos: e.target.value })} />
                 <label className="label mt-2">Teléfono</label>
                 <input className="input input-bordered w-full" value={datosEntrada.telefono} onChange={e => setDatosEntrada({ ...datosEntrada, telefono: e.target.value })} />
+
+                {/* BOTÓN GUARDAR CLIENTE NUEVO */}
+                {!clienteEncontrado && datosEntrada.documento && (
+                  <div className="mt-4">
+                    <button type="button" className="btn btn-secondary w-full gap-2" onClick={guardarClienteYContinuar} disabled={guardandoCliente}>
+                      {guardandoCliente ? <span className="loading loading-spinner loading-xs"></span> : <Save size={18} />}
+                      Guardar Cliente
+                    </button>
+                  </div>
+                )}
               </div>
               <div className={modoEntrada === 'reserva' ? 'md:col-span-2' : ''}>
                 {modoEntrada === 'inmediato' ? (
@@ -926,7 +1151,7 @@ export default function HabitacionList() {
             </div>
             <div className="modal-action">
               <button className="btn btn-ghost" onClick={() => setModalAbierto(null)}>Cancelar</button>
-              <LoadingButton type="button" isLoading={cargandoAccion} onClick={modoEntrada === 'inmediato' ? ejecutarEntrada : ejecutarReserva}>
+              <LoadingButton type="button" isLoading={cargandoAccion} onClick={modoEntrada === 'inmediato' ? ejecutarEntradaApi : ejecutarReservaApi}>
                 {modoEntrada === 'inmediato' ? 'Confirmar Entrada' : 'Crear Reserva'}
               </LoadingButton>
             </div>
@@ -939,7 +1164,7 @@ export default function HabitacionList() {
         <div className="modal modal-open modal-middle">
           <div className="modal-box max-w-[95vw] max-h-[90vh] overflow-y-auto bg-base-100 border border-base-200">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2"><DoorOpen /> Salida — Hab. {habitacionSeleccionada.numeroHabitacion}</h3>
-            <p className="text-base-content/90">¿Confirmar la salida del cliente <strong>{habitacionSeleccionada.clienteHuesped || 'desconocido'}</strong>?</p>
+            <p className="text-base-content/90">Confirmar la salida del cliente <strong>{habitacionSeleccionada.clienteHuesped || 'desconocido'}</strong>?</p>
             <p className="text-sm text-base-content/60 mt-2">La habitación pasará a estado <strong>Limpieza</strong>.</p>
             <div className="modal-action">
               <button className="btn btn-ghost" onClick={() => setModalAbierto(null)}>Cancelar</button>

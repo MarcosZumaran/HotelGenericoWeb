@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import * as signalR from '@microsoft/signalr';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5054';
 
 export function useSignalR(eventName, callback) {
   const [isConnected, setIsConnected] = useState(false);
-  const connectionRef = useRef(null);
   const callbackRef = useRef(callback);
 
   useEffect(() => {
@@ -35,15 +34,13 @@ export function useSignalR(eventName, callback) {
     connection.onreconnected(() => setIsConnected(true));
     connection.onclose(() => setIsConnected(false));
 
-    connectionRef.current = connection;
-
     return () => {
       connection.off(eventName, handler);
       connection.stop();
     };
   }, [eventName]);
 
-  return { isConnected, connection: connectionRef.current };
+  return { isConnected };
 }
 
 export default useSignalR;

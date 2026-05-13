@@ -8,10 +8,13 @@ import { Receipt, Eye, SendHorizontal, FileText } from 'lucide-react';
 import swal from '../../lib/swal';
 import {
   useReactTable, getCoreRowModel, getSortedRowModel,
-  flexRender, createColumnHelper,
+  getFilteredRowModel, getPaginationRowModel,
+  createColumnHelper,
 } from '@tanstack/react-table';
 import PdfViewerModal from '../../components/ui/PdfViewerModal';
 import DataTable from '../../components/ui/DataTable';
+import TableFilters from '../../components/ui/TableFilters';
+import { isBefore, isAfter, isSameDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 
 const columnHelper = createColumnHelper();
 
@@ -23,12 +26,57 @@ export default function ComprobanteList() {
   const [cargando, setCargando] = useState(true);
   const [enviandoId, setEnviandoId] = useState(null);
   const [sorting, setSorting] = useState([]);
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState({ type: 'none', date: null, dateEnd: null });
   const [pdfUrl, setPdfUrl] = useState(null);
   const [mostrarPdf, setMostrarPdf] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [totalItems, setTotalItems] = useState(0);
   const [parentRef] = useAutoAnimate();
+
+  const cargarComprobantes = async () => {
+    setCargando(true);
+    try {
+      // Traemos todos los comprobantes (sin paginación) para filtrar en cliente
+      const res = await api.get('/Comprobante', { params: { pageSize: 9999 } });
+      const data = res.data.items || res.data;
+      setComprobantes(Array.isArray(data) ? data : []);
+    } catch (error) {
+      swal.fire('Error', 'No se pudieron cargar los comprobantes', 'error');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  useEffect(() => { cargarComprobantes(); }, []);
+
+  useSignalR('ComprobanteEmitido', (data) => {
+    toast(`🧾 Nuevo comprobante: ${data.tipo} #${data.idComprobante} - S/ ${data.monto.toFixed(2)}`, {
+      icon: '📄',
+      duration: 4000,
+    });
+    cargarComprobantes();
+  });
+
+  // Filtro por fecha sobre fechaEmision
+  const dataFiltrada = useMemo(() => {
+    if (!dateFilter || dateFilter.type === 'none' || !dateFilter.date) return comprobantes;
+
+    return comprobantes.filter(item => {
+      const itemDate = new Date(item.fechaEmision);
+      const filterDate = dateFilter.date;
+
+      if (dateFilter.type === 'before') return isBefore(itemDate, startOfDay(filterDate));
+      if (dateFilter.type === 'after') return isAfter(itemDate, endOfDay(filterDate));
+      if (dateFilter.type === 'on') return isSameDay(itemDate, filterDate);
+      if (dateFilter.type === 'range') {
+        if (!dateFilter.dateEnd) return true;
+        return isWithinInterval(itemDate, {
+          start: startOfDay(filterDate),
+          end: endOfDay(dateFilter.dateEnd)
+        });
+      }
+      return true;
+    });
+  }, [comprobantes, dateFilter]);
 
   const columns = useMemo(() => [
     columnHelper.accessor('idComprobante', { header: 'N°', enableSorting: true, cell: info => <span className="font-bold">{info.getValue()}</span> }),
@@ -48,34 +96,19 @@ export default function ComprobanteList() {
   ], []);
 
   const table = useReactTable({
-    data: comprobantes, columns, state: { sorting }, onSortingChange: setSorting,
-    getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel(),
-  });
-
-  const cargarComprobantes = async (pagina = page) => {
-    setCargando(true);
-    try {
-      const res = await api.get('/Comprobante', { params: { page: pagina, pageSize } });
-      setComprobantes(res.data.items);
-      setTotalItems(res.data.totalItems);
-    } catch (error) {
-      swal.fire('Error', 'No se pudieron cargar los comprobantes', 'error');
-    } finally {
-      setCargando(false);
+    data: dataFiltrada,
+    columns,
+    state: { sorting, globalFilter },
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: { pageSize: 10 }
     }
-  };
-
-  useEffect(() => { cargarComprobantes(); }, [page]);
-
-  useSignalR('ComprobanteEmitido', (data) => {
-    toast(`🧾 Nuevo comprobante: ${data.tipo} #${data.idComprobante} - S/ ${data.monto.toFixed(2)}`, {
-      icon: '📄',
-      duration: 4000,
-    });
-    cargarComprobantes(page);
   });
-
-  const handlePageChange = (newPage) => { setPage(newPage); cargarComprobantes(newPage); };
 
   const verDetalle = async (id) => {
     try {
@@ -95,7 +128,7 @@ export default function ComprobanteList() {
     setEnviandoId(id);
     try {
       await api.post(`/Comprobante/${id}/enviar`, '"hash_simulado"', { headers: { 'Content-Type': 'application/json' } });
-      swal.fire('Enviado', 'Comprobante marcado como enviado a SUNAT.', 'success'); cargarComprobantes(page);
+      swal.fire('Enviado', 'Comprobante marcado como enviado a SUNAT.', 'success'); cargarComprobantes();
     } catch (error) { swal.fire('Error', 'No se pudo actualizar el estado del comprobante', 'error'); }
     finally { setEnviandoId(null); }
   };
@@ -106,13 +139,6 @@ export default function ComprobanteList() {
       const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
       setPdfUrl(url); setMostrarPdf(true);
     } catch (error) { swal.fire('Error', 'No se pudo generar el PDF', 'error'); }
-  };
-
-  const paginacion = {
-    page,
-    pageSize,
-    totalItems,
-    onPageChange: handlePageChange,
   };
 
   return (
@@ -127,12 +153,21 @@ export default function ComprobanteList() {
         </div>
       </div>
 
+      {/* Filtros */}
+      <TableFilters
+        globalFilter={globalFilter}
+        setGlobalFilter={setGlobalFilter}
+        dateFilter={dateFilter}
+        setDateFilter={setDateFilter}
+        placeholder="Buscar por serie, cliente, estado..."
+        showDateFilter={true}
+      />
+
       {/* Tabla */}
       <DataTable
         table={table}
         columns={columns}
-        emptyMessage="No se encontraron comprobantes."
-        paginacion={paginacion}
+        emptyMessage="No se encontraron comprobantes con los criterios de búsqueda"
         isLoading={cargando}
         showActions={true}
         renderActions={(row) => (
@@ -160,6 +195,12 @@ export default function ComprobanteList() {
           </div>
         )}
         parentRef={parentRef}
+        paginacion={{
+          page: table.getState().pagination.pageIndex + 1,
+          pageSize: table.getState().pagination.pageSize,
+          totalItems: table.getFilteredRowModel().rows.length,
+          onPageChange: (p) => table.setPageIndex(p - 1)
+        }}
       />
 
       {mostrarPdf && <PdfViewerModal pdfUrl={pdfUrl} onClose={() => { setMostrarPdf(false); setPdfUrl(null); }} />}

@@ -1,14 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useAutoAnimate } from '@formkit/auto-animate/react';
 import {
     useReactTable, getCoreRowModel, getSortedRowModel,
+    getFilteredRowModel, getPaginationRowModel,
     createColumnHelper,
 } from '@tanstack/react-table';
+import { isBefore, isAfter, isSameDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import api from '../../api/axios';
 import swal from '../../lib/swal';
 import { ShoppingCart, FileText } from 'lucide-react';
 import PdfViewerModal from '../../components/ui/PdfViewerModal';
 import DataTable from '../../components/ui/DataTable';
+import TableFilters from '../../components/ui/TableFilters';
 
 const columnHelper = createColumnHelper();
 
@@ -16,19 +18,17 @@ export default function HistorialVentas() {
     const [ventas, setVentas] = useState([]);
     const [cargando, setCargando] = useState(true);
     const [sorting, setSorting] = useState([]);
+    const [globalFilter, setGlobalFilter] = useState('');
+    const [dateFilter, setDateFilter] = useState({ type: 'none', date: null, dateEnd: null });
     const [pdfUrl, setPdfUrl] = useState(null);
     const [mostrarPdf, setMostrarPdf] = useState(false);
-    const [page, setPage] = useState(1);
-    const [pageSize] = useState(10);
-    const [totalItems, setTotalItems] = useState(0);
-    const [parentRef] = useAutoAnimate();
 
-    const cargarVentas = async (pagina = page) => {
+    const cargarVentas = async () => {
         setCargando(true);
         try {
-            const res = await api.get('/Venta', { params: { page: pagina, pageSize } });
-            setVentas(res.data.items);
-            setTotalItems(res.data.totalItems);
+            const res = await api.get('/Venta');
+            const data = Array.isArray(res.data) ? res.data : (res.data.items || []);
+            setVentas(data);
         } catch (error) {
             swal.fire('Error', 'No se pudo cargar el historial de ventas', 'error');
         } finally {
@@ -36,25 +36,40 @@ export default function HistorialVentas() {
         }
     };
 
-    useEffect(() => { cargarVentas(); }, [page]);
-
-    const handlePageChange = (newPage) => { setPage(newPage); cargarVentas(newPage); };
+    useEffect(() => { cargarVentas(); }, []);
 
     const verPdf = async (idVenta) => {
-        try {
-            const res = await api.get(`/Pdf/Venta/${idVenta}`, { responseType: 'blob' });
-            const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
-            setPdfUrl(url); setMostrarPdf(true);
-        } catch (error) {
-            swal.fire('Error', 'No se pudo generar el PDF', 'error');
-        }
+        const url = "/Pdf/Venta/" + idVenta;
+        setPdfUrl(url);
+        setMostrarPdf(true);
     };
+
+    const dataFiltrada = useMemo(() => {
+        if (!dateFilter || dateFilter.type === 'none' || !dateFilter.date) return ventas;
+
+        return ventas.filter(item => {
+            const itemDate = new Date(item.fechaVenta);
+            const filterDate = dateFilter.date;
+
+            if (dateFilter.type === 'before') return isBefore(itemDate, startOfDay(filterDate));
+            if (dateFilter.type === 'after') return isAfter(itemDate, endOfDay(filterDate));
+            if (dateFilter.type === 'on') return isSameDay(itemDate, filterDate);
+            if (dateFilter.type === 'range') {
+                if (!dateFilter.dateEnd) return true;
+                return isWithinInterval(itemDate, {
+                    start: startOfDay(filterDate),
+                    end: endOfDay(dateFilter.dateEnd)
+                });
+            }
+            return true;
+        });
+    }, [ventas, dateFilter]);
 
     const columns = useMemo(() => [
         columnHelper.accessor('idVenta', {
             header: 'N° Venta',
             enableSorting: true,
-            cell: info => <span className="font-bold text-primary">#{info.getValue()}</span>
+            cell: info => <span className="font-bold text-primary">{"#" + info.getValue()}</span>
         }),
         columnHelper.accessor('clienteNombre', {
             header: 'Cliente',
@@ -68,7 +83,7 @@ export default function HistorialVentas() {
         columnHelper.accessor('total', {
             header: 'Total',
             enableSorting: true,
-            cell: info => <span className="font-semibold text-success">S/ {info.getValue().toFixed(2)}</span>
+            cell: info => <span className="font-semibold text-success">{"S/ " + info.getValue().toFixed(2)}</span>
         }),
         columnHelper.accessor('metodoPago', {
             header: 'Método de Pago',
@@ -94,20 +109,22 @@ export default function HistorialVentas() {
     ], []);
 
     const table = useReactTable({
-        data: ventas, columns, state: { sorting }, onSortingChange: setSorting,
-        getCoreRowModel: getCoreRowModel(), getSortedRowModel: getSortedRowModel(),
+        data: dataFiltrada,
+        columns,
+        state: { sorting, globalFilter },
+        onSortingChange: setSorting,
+        onGlobalFilterChange: setGlobalFilter,
+        getCoreRowModel: getCoreRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getPaginationRowModel: getPaginationRowModel(),
+        initialState: {
+            pagination: { pageSize: 10 }
+        }
     });
-
-    const paginacion = {
-        page,
-        pageSize,
-        totalItems,
-        onPageChange: handlePageChange,
-    };
 
     return (
         <div>
-            {/* Encabezado */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                     <h2 className="text-2xl font-bold flex items-center gap-2">
@@ -117,14 +134,25 @@ export default function HistorialVentas() {
                 </div>
             </div>
 
-            {/* Tabla */}
+            <TableFilters
+                globalFilter={globalFilter}
+                setGlobalFilter={setGlobalFilter}
+                dateFilter={dateFilter}
+                setDateFilter={setDateFilter}
+                placeholder="Buscar por N° venta, cliente..."
+            />
+
             <DataTable
                 table={table}
                 columns={columns}
-                emptyMessage="No hay ventas registradas"
-                paginacion={paginacion}
+                emptyMessage="No se encontraron ventas con los criterios de búsqueda"
                 isLoading={cargando}
-                parentRef={parentRef}
+                paginacion={{
+                    page: table.getState().pagination.pageIndex + 1,
+                    pageSize: table.getState().pagination.pageSize,
+                    totalItems: table.getFilteredRowModel().rows.length,
+                    onPageChange: (p) => table.setPageIndex(p - 1)
+                }}
             />
 
             {mostrarPdf && <PdfViewerModal pdfUrl={pdfUrl} onClose={() => { setMostrarPdf(false); setPdfUrl(null); }} />}

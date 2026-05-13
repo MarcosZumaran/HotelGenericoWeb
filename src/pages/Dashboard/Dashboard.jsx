@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/axios';
 import { useSignalR } from '../../hooks/useSignalR';
 import toast from 'react-hot-toast';
-import { Bed, DollarSign, TrendingUp, Users, Wrench } from 'lucide-react';
+import { Bed, DollarSign, TrendingUp, Users, Wrench, Calendar } from 'lucide-react';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -27,6 +27,7 @@ export default function Dashboard() {
     disponibles: 0,
     enLimpieza: 0,
     enMantenimiento: 0,
+    enReserva: 0,
     ingresosHoy: 0,
     estadoHabitaciones: [],
   });
@@ -36,7 +37,8 @@ export default function Dashboard() {
     ocupadas: '#f59e0b',
     disponibles: '#22c55e',
     limpieza: '#3b82f6',
-    mantenimiento: '#6b7280',
+    mantenimiento: '#ef4444',
+    enReserva: '#f97316',
   };
 
   const cargarDatos = async () => {
@@ -56,6 +58,7 @@ export default function Dashboard() {
         disponibles: habitaciones.filter((h) => h.estado === 'Disponible').length,
         enLimpieza: habitaciones.filter((h) => h.estado === 'Limpieza').length,
         enMantenimiento: habitaciones.filter((h) => h.estado === 'Mantenimiento').length,
+        enReserva: habitaciones.filter((h) => h.estado === 'En Reserva').length,
         ingresosHoy: cierre.reduce((sum, item) => sum + (item.ingresos || 0), 0),
         estadoHabitaciones: habitaciones,
       });
@@ -68,6 +71,8 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    const cargar = async () => await cargarDatos();
+    cargar();
     cargarDatos();
   }, []);
 
@@ -77,15 +82,22 @@ export default function Dashboard() {
   });
 
   const datosOcupacion = {
-    labels: ['Ocupadas', 'Disponibles', 'Limpieza', 'Mantenimiento'],
+    labels: ['Ocupadas', 'Disponibles', 'Limpieza', 'Mantenimiento', 'En Reserva'],
     datasets: [
       {
-        data: [datos.ocupadas, datos.disponibles, datos.enLimpieza || 0, datos.enMantenimiento || 0],
+        data: [
+          datos.ocupadas,
+          datos.disponibles,
+          datos.enLimpieza || 0,
+          datos.enMantenimiento || 0,
+          datos.enReserva || 0,
+        ],
         backgroundColor: [
           coloresGrafico.ocupadas,
           coloresGrafico.disponibles,
           coloresGrafico.limpieza,
           coloresGrafico.mantenimiento,
+          coloresGrafico.enReserva,
         ],
         borderWidth: 0,
       },
@@ -154,10 +166,16 @@ export default function Dashboard() {
       color: 'text-success bg-success/10',
     },
     {
+      titulo: 'En Reserva',
+      valor: datos.enReserva || 0,
+      icono: <Calendar size={28} />,
+      color: 'text-orange-500 bg-orange-500/10',
+    },
+    {
       titulo: 'En Mantenimiento',
       valor: datos.enMantenimiento || 0,
       icono: <Wrench size={28} />,
-      color: 'text-gray-500 bg-gray-200/50',
+      color: 'text-error bg-error/10',
     },
     {
       titulo: 'Ingresos Hoy',
@@ -173,7 +191,7 @@ export default function Dashboard() {
       <p className="text-base-content/70 mb-6">Bienvenido, {user?.username}</p>
 
       {/* Tarjetas de resumen */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
         {tarjetas.map((tarjeta, idx) => (
           <div
             key={idx}
@@ -258,13 +276,11 @@ export default function Dashboard() {
                     <td>S/ {h.precioNoche.toFixed(2)}</td>
                     <td>
                       <span
-                        className={`badge ${h.estado === 'Disponible'
-                            ? 'badge-success'
-                            : h.estado === 'Ocupada'
-                              ? 'badge-warning'
-                              : h.estado === 'Limpieza'
-                                ? 'badge-info'
-                                : 'badge-error'
+                        className={`badge ${h.estado === 'Disponible' ? 'badge-success' :
+                            h.estado === 'Ocupada' ? 'badge-warning' :
+                              h.estado === 'Limpieza' ? 'badge-info' :
+                                h.estado === 'Mantenimiento' ? 'badge-error' :
+                                  h.estado === 'En Reserva' ? 'badge-warning' : 'badge-ghost'
                           }`}
                       >
                         {h.estado}

@@ -4,11 +4,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { clienteSchema } from './clienteSchema';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../api/axios';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import {
-  Plus, Edit, Trash2, Search
+  Plus, Edit, Trash2, Search, CheckCircle
 } from 'lucide-react';
 import swal from '../../lib/swal';
 import LoadingButton from '../../components/ui/LoadingButton';
@@ -16,9 +16,14 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
+  getFilteredRowModel,
   createColumnHelper,
 } from '@tanstack/react-table';
 import DataTable from '../../components/ui/DataTable';
+import TableFilters from '../../components/ui/TableFilters';
+import { isBefore, isAfter, isSameDay, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
+import { consultarDni } from '../../api/verifica_pe';
+import toast from 'react-hot-toast';
 
 const columnHelper = createColumnHelper();
 
@@ -31,23 +36,88 @@ export default function ClienteList() {
   const [editando, setEditando] = useState(null);
   const [mostrarModal, setMostrarModal] = useState(false);
   const [sorting, setSorting] = useState([]);
-  const [page, setPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [totalItems, setTotalItems] = useState(0);
-  const [parentRef] = useAutoAnimate();
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState({ type: 'none', date: null, dateEnd: null });
+  const [consultandoReniec, setConsultandoReniec] = useState(false);
 
   const [buscarTipo, setBuscarTipo] = useState('');
   const [buscarDocumento, setBuscarDocumento] = useState('');
+
+  const [parentRef] = useAutoAnimate(); // ← CORREGIDO: se llama al inicio, no en JSX
 
   const {
     register,
     handleSubmit,
     reset,
     control,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(clienteSchema),
   });
+
+  const cargarClientes = async () => {
+    setCargando(true);
+    try {
+      const res = await api.get('/Cliente', { params: { pageSize: 9999 } });
+      setClientes(res.data.items || []);
+    } catch (error) {
+      swal.fire('Error', 'No se pudieron cargar los clientes', 'error');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  useEffect(() => { cargarClientes(); }, []);
+
+  const buscarClienteManual = async () => {
+    if (!buscarTipo || !buscarDocumento) {
+      cargarClientes();
+      return;
+    }
+    try {
+      const res = await api.get(`/Cliente/documento/${buscarTipo}/${buscarDocumento}`);
+      setClientes(res.data ? [res.data] : []);
+    } catch (error) {
+      if (error.response?.status === 404) {
+        setClientes([]);
+        swal.fire('Sin resultados', 'No se encontró ningún cliente con ese documento', 'info');
+      } else {
+        swal.fire('Error', 'Error al buscar cliente', 'error');
+      }
+    }
+  };
+
+  const limpiarBusquedaDocumento = () => {
+    setBuscarTipo('');
+    setBuscarDocumento('');
+    cargarClientes();
+  };
+
+  // Filtro por fecha sobre fechaRegistro
+  const dataFiltrada = useMemo(() => {
+    let result = clientes;
+    if (dateFilter && dateFilter.type !== 'none' && dateFilter.date) {
+      result = result.filter(item => {
+        const itemDate = item.fechaRegistro ? new Date(item.fechaRegistro) : null;
+        if (!itemDate) return true;
+        const filterDate = dateFilter.date;
+        if (dateFilter.type === 'before') return isBefore(itemDate, startOfDay(filterDate));
+        if (dateFilter.type === 'after') return isAfter(itemDate, endOfDay(filterDate));
+        if (dateFilter.type === 'on') return isSameDay(itemDate, filterDate);
+        if (dateFilter.type === 'range') {
+          if (!dateFilter.dateEnd) return true;
+          return isWithinInterval(itemDate, {
+            start: startOfDay(filterDate),
+            end: endOfDay(dateFilter.dateEnd)
+          });
+        }
+        return true;
+      });
+    }
+    return result;
+  }, [clientes, dateFilter]);
 
   const columns = useMemo(
     () => [
@@ -83,61 +153,15 @@ export default function ClienteList() {
   );
 
   const table = useReactTable({
-    data: clientes,
+    data: dataFiltrada,
     columns,
-    state: { sorting },
+    state: { sorting, globalFilter },
     onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
   });
-
-  const cargarClientes = async (pagina = page) => {
-    setCargando(true);
-    try {
-      const res = await api.get('/Cliente', { params: { page: pagina, pageSize } });
-      setClientes(res.data.items);
-      setTotalItems(res.data.totalItems);
-    } catch (error) {
-      swal.fire('Error', 'No se pudieron cargar los clientes', 'error');
-    } finally {
-      setCargando(false);
-    }
-  };
-
-  useEffect(() => { cargarClientes(); }, [page]);
-
-  const handlePageChange = (newPage) => {
-    setPage(newPage);
-    cargarClientes(newPage);
-  };
-
-  const buscarCliente = async () => {
-    if (!buscarTipo || !buscarDocumento) {
-      setPage(1);
-      cargarClientes(1);
-      return;
-    }
-    try {
-      const res = await api.get(`/Cliente/documento/${buscarTipo}/${buscarDocumento}`);
-      setClientes(res.data ? [res.data] : []);
-      setTotalItems(res.data ? 1 : 0);
-    } catch (error) {
-      if (error.response?.status === 404) {
-        setClientes([]);
-        setTotalItems(0);
-        swal.fire('Sin resultados', 'No se encontró ningún cliente con ese documento', 'info');
-      } else {
-        swal.fire('Error', 'Error al buscar cliente', 'error');
-      }
-    }
-  };
-
-  const limpiarBusqueda = () => {
-    setBuscarTipo('');
-    setBuscarDocumento('');
-    setPage(1);
-    cargarClientes(1);
-  };
 
   const abrirModalCrear = () => {
     setEditando(null);
@@ -162,6 +186,33 @@ export default function ClienteList() {
 
   const cerrarModal = () => { setMostrarModal(false); setEditando(null); reset(); };
 
+  // Verificar DNI con VerificaPE
+  const verificarDni = async () => {
+    const dni = watch('documento');
+    if (!dni || dni.length < 8) {
+      toast.error('Ingrese un DNI válido de 8 dígitos', { duration: 3000 });
+      return;
+    }
+
+    setConsultandoReniec(true);
+    try {
+      const data = await consultarDni(dni);
+      setValue('nombres', data.names);
+      setValue('apellidos', `${data.paternalSurname} ${data.maternalSurname}`);
+
+      if (data.birthDate) {
+        const parsedDate = parse(data.birthDate, 'dd/MM/yyyy', new Date());
+        setValue('fechaNacimiento', format(parsedDate, 'yyyy-MM-dd'));
+      }
+
+      toast.success(`Datos de ${data.fullName} verificados correctamente`, { duration: 3000 });
+    } catch (error) {
+      toast.error(error.message || 'No se pudo verificar el DNI', { duration: 3000 });
+    } finally {
+      setConsultandoReniec(false);
+    }
+  };
+
   const onSubmit = async (data) => {
     const payload = { ...data, fechaNacimiento: data.fechaNacimiento || null, telefono: data.telefono || null, email: data.email || null, nacionalidad: data.nacionalidad || 'PERUANA', direccion: data.direccion || null };
     try {
@@ -173,7 +224,7 @@ export default function ClienteList() {
         swal.fire('Creado', 'Cliente registrado exitosamente', 'success');
       }
       cerrarModal();
-      cargarClientes(page);
+      cargarClientes();
     } catch (error) {
       swal.fire('Error', error.response?.data?.mensaje || 'Error al guardar el cliente', 'error');
     }
@@ -188,7 +239,7 @@ export default function ClienteList() {
     try {
       await api.delete(`/Cliente/${id}`);
       swal.fire('Eliminado', 'El cliente fue eliminado', 'success');
-      cargarClientes(page);
+      cargarClientes();
     } catch (error) {
       swal.fire('Error', error.response?.data?.mensaje || 'Error al eliminar el cliente', 'error');
     }
@@ -197,13 +248,6 @@ export default function ClienteList() {
   const tiposDocumento = [
     { codigo: '1', descripcion: 'DNI' }, { codigo: '7', descripcion: 'Pasaporte' }, { codigo: '6', descripcion: 'RUC' },
   ];
-
-  const paginacion = {
-    page,
-    pageSize,
-    totalItems,
-    onPageChange: handlePageChange,
-  };
 
   return (
     <div>
@@ -220,7 +264,17 @@ export default function ClienteList() {
         )}
       </div>
 
-      {/* Filtros de búsqueda */}
+      {/* Filtros generales (búsqueda global + fecha) */}
+      <TableFilters
+        globalFilter={globalFilter}
+        setGlobalFilter={setGlobalFilter}
+        dateFilter={dateFilter}
+        setDateFilter={setDateFilter}
+        placeholder="Buscar por nombre, documento, teléfono..."
+        showDateFilter={true}
+      />
+
+      {/* Filtro adicional por documento */}
       <div className="card bg-base-100 shadow-sm border border-base-200 mb-6">
         <div className="card-body p-5">
           <div className="flex flex-col sm:flex-row gap-4 items-end">
@@ -240,13 +294,13 @@ export default function ClienteList() {
                 placeholder="Ingresá el documento"
                 value={buscarDocumento}
                 onChange={(e) => setBuscarDocumento(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && buscarCliente()}
+                onKeyDown={(e) => e.key === 'Enter' && buscarClienteManual()}
               />
             </div>
-            <button className="btn btn-primary gap-2" onClick={buscarCliente}>
+            <button className="btn btn-primary gap-2" onClick={buscarClienteManual}>
               <Search size={20} /> Buscar
             </button>
-            <button className="btn btn-ghost" onClick={limpiarBusqueda}>Limpiar</button>
+            <button className="btn btn-ghost" onClick={limpiarBusquedaDocumento}>Limpiar</button>
           </div>
         </div>
       </div>
@@ -255,8 +309,7 @@ export default function ClienteList() {
       <DataTable
         table={table}
         columns={columns}
-        emptyMessage="No se encontraron clientes"
-        paginacion={paginacion}
+        emptyMessage="No se encontraron clientes con los criterios de búsqueda"
         isLoading={cargando}
         showActions={esAdmin}
         renderActions={(row) => (
@@ -286,7 +339,26 @@ export default function ClienteList() {
               </div>
               <div className="form-control mb-4">
                 <label className="label"><span className="label-text">Número de Documento</span></label>
-                <input type="text" className={`input input-bordered ${errors.documento ? 'input-error' : ''}`} {...register('documento')} />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    className={`input input-bordered flex-1 ${errors.documento ? 'input-error' : ''}`}
+                    {...register('documento')}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-primary"
+                    onClick={verificarDni}
+                    disabled={consultandoReniec}
+                  >
+                    {consultandoReniec ? (
+                      <span className="loading loading-spinner loading-xs"></span>
+                    ) : (
+                      <CheckCircle size={18} />
+                    )}
+                    Verificar
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div className="form-control"><label className="label"><span className="label-text">Nombres</span></label><input type="text" className={`input input-bordered ${errors.nombres ? 'input-error' : ''}`} {...register('nombres')} /></div>

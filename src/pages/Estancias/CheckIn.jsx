@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { DayPicker } from 'react-day-picker';
 import { checkinSchema } from './checkinSchema';
 import api from '../../api/axios';
-import { UserPlus, Bed, Calendar, CreditCard, Search, Hash, Phone } from 'lucide-react';
+import { UserPlus, Bed, Search } from 'lucide-react';
 import swal from '../../lib/swal';
 import LoadingButton from '../../components/ui/LoadingButton';
 
@@ -22,7 +22,7 @@ export default function CheckIn() {
     watch,
     setValue,
     control,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm({
     resolver: zodResolver(checkinSchema),
     defaultValues: {
