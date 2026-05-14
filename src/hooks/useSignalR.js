@@ -13,7 +13,9 @@ export function useSignalR(eventName, callback) {
 
   useEffect(() => {
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl(`${API_BASE_URL}/hotelhub`)
+      .withUrl(`${API_BASE_URL}/hotelhub`, {
+        accessTokenFactory: () => localStorage.getItem('token')
+      })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
       .configureLogging(signalR.LogLevel.Warning)
       .build();
