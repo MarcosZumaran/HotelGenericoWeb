@@ -12,6 +12,29 @@ export function AuthProvider({ children }) {
     });
     const [isLoading, setIsLoading] = useState(false);
 
+    // VALIDACIÓN DE EXPIRACIÓN DEL TOKEN AL INICIAR
+    useEffect(() => {
+        const storedToken = localStorage.getItem('token');
+        if (storedToken) {
+            try {
+                const payload = JSON.parse(atob(storedToken.split('.')[1]));
+                if (payload.exp * 1000 < Date.now()) {
+                    // Token expirado: limpiar
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    setToken(null);
+                    setUser(null);
+                }
+            } catch (e) {
+                // Token corrupto: limpiar
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                setToken(null);
+                setUser(null);
+            }
+        }
+    }, []);
+
     // Sincronizamos el token con localStorage cada vez que cambie
     useEffect(() => {
         if (token) {
@@ -21,7 +44,7 @@ export function AuthProvider({ children }) {
         }
     }, [token]);
 
-    // Sincronizamos el token con localStorage cada vez que cambie y sincronizamos el usuario
+    // Sincronizamos el usuario con localStorage cada vez que cambie
     useEffect(() => {
         if (user) {
             localStorage.setItem('user', JSON.stringify(user));
