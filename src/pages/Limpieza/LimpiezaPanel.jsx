@@ -1,16 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../../api/axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { CheckCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-const coloresFondo = {
-    1: 'bg-success/10 border-success/30',
-    2: 'bg-warning/10 border-warning/30',
-    3: 'bg-info/10 border-info/30',
-    4: 'bg-error/10 border-error/30',
-    5: 'bg-orange-500/10 border-orange-500/30',
-};
+import HabitacionCard from '../../components/ui/HabitacionCard';
+import { useSignalR } from '../../hooks/useSignalR';
 
 export default function LimpiezaPanel() {
     const { user } = useAuth();
@@ -18,11 +12,10 @@ export default function LimpiezaPanel() {
     const [cargando, setCargando] = useState(false);
     const [cambiando, setCambiando] = useState(null);
 
-    const cargarHabitacionesLimpieza = async () => {
+    const cargarHabitacionesLimpieza = useCallback(async () => {
         setCargando(true);
         try {
             const res = await api.get('/Habitacion/estado-actual');
-            // Filtramos solo las que están en estado "Limpieza" (idEstado 3)
             const enLimpieza = res.data.filter(h => h.idEstado === 3);
             setHabitaciones(enLimpieza);
         } catch (error) {
@@ -30,21 +23,31 @@ export default function LimpiezaPanel() {
         } finally {
             setCargando(false);
         }
-    };
+    }, []);
 
+    // Carga inicial
     useEffect(() => {
         cargarHabitacionesLimpieza();
-        // Recargar cada 30 segundos para estar sincronizados
-        const intervalo = setInterval(cargarHabitacionesLimpieza, 30000);
+    }, [cargarHabitacionesLimpieza]);
+
+    // Actualización en tiempo real con SignalR
+    useSignalR('EstadoHabitacionCambiado', () => {
+        // Recargar la lista cuando cualquier estado cambia
+        cargarHabitacionesLimpieza();
+    });
+
+    // Refresco periódico como respaldo (cada 2 minutos)
+    useEffect(() => {
+        const intervalo = setInterval(cargarHabitacionesLimpieza, 120000);
         return () => clearInterval(intervalo);
-    }, []);
+    }, [cargarHabitacionesLimpieza]);
 
     const marcarComoDisponible = async (idHabitacion) => {
         setCambiando(idHabitacion);
         try {
-            await api.patch(`/Habitacion/${idHabitacion}`, { idEstado: 1 }); // 1 = Disponible
+            await api.patch(`/Habitacion/${idHabitacion}`, { idEstado: 1 });
             toast.success('Habitación marcada como disponible');
-            cargarHabitacionesLimpieza();
+            // No es necesario recargar manualmente, SignalR lo hará en milisegundos
         } catch (error) {
             toast.error('Error al cambiar el estado');
         } finally {
@@ -72,49 +75,32 @@ export default function LimpiezaPanel() {
             </div>
 
             {habitaciones.length === 0 ? (
-                <div className="text-center py-16 text-2xl text-base-content/40">
-                    ✅ Todo está limpio
-                </div>
+                <div className="text-center py-16 text-2xl text-base-content/40">Todo está limpio</div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {habitaciones.map(h => (
-                        <div
+                        <HabitacionCard
                             key={h.idHabitacion}
-                            className={`card border-2 ${coloresFondo[h.idEstado] || 'bg-base-200'} shadow-md animate-[pulse_2s_ease-in-out_infinite]`}
-                            style={{ animation: 'pulse 2s ease-in-out infinite' }}
-                        >
-                            <div className="card-body items-center text-center p-6">
-                                <h3 className="text-5xl font-extrabold text-base-content mb-2">
-                                    {h.numeroHabitacion}
-                                </h3>
-                                <p className="text-xl font-semibold text-base-content/80 mb-4">
-                                    {h.nombreTipo}
-                                </p>
+                            habitacion={h}
+                            allHover={false}
+                            extraActions={(habitacion) => (
                                 <button
-                                    className="btn btn-success btn-lg w-full gap-2 text-xl"
-                                    onClick={() => marcarComoDisponible(h.idHabitacion)}
-                                    disabled={cambiando === h.idHabitacion}
+                                    className="btn btn-success btn-lg w-full gap-2 text-xl mt-2"
+                                    onClick={(e) => { e.stopPropagation(); marcarComoDisponible(habitacion.idHabitacion); }}
+                                    disabled={cambiando === habitacion.idHabitacion}
                                 >
-                                    {cambiando === h.idHabitacion ? (
+                                    {cambiando === habitacion.idHabitacion ? (
                                         <span className="loading loading-spinner loading-md"></span>
                                     ) : (
                                         <CheckCircle size={28} />
                                     )}
                                     LISTA
                                 </button>
-                            </div>
-                        </div>
+                            )}
+                        />
                     ))}
                 </div>
             )}
-
-            {/* Animación de parpadeo suave definida en línea */}
-            <style>{`
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
-        }
-      `}</style>
         </div>
     );
 }

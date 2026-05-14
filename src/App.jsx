@@ -29,6 +29,7 @@ function App() {
                 <Route path="/" element={<Navigate to="/dashboard" />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/habitaciones" element={<HabitacionList />} />
+                <Route path="/limpieza" element={<LimpiezaPanel />} />
                 <Route path="/clientes" element={<ClienteList />} />
                 <Route path="/productos" element={<ProductoList />} />
                 <Route path="/ventas" element={<VentaList />} />
@@ -40,7 +41,7 @@ function App() {
             </Route>
 
             {/* Ruta exclusiva para Limpieza y Administrador */}
-            <Route element={<ProtectedRoute allowedRoles={['Limpieza', 'Administrador']} />}>
+            <Route element={<ProtectedRoute allowedRoles={['Limpieza']} />}>
               <Route element={<DashboardLayout />}>
                 <Route path="/" element={<Navigate to="/limpieza" />} />
                 <Route path="/limpieza" element={<LimpiezaPanel />} />
