@@ -7,14 +7,24 @@
 @layer base {
     html {
         font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+        scroll-behavior: smooth;
+        font-size: 18px;
     }
 
     body {
         @apply bg-base-200 text-base-content antialiased;
     }
+
+    body,
+    .card,
+    .btn,
+    .navbar,
+    .footer {
+        @apply transition-colors duration-200;
+    }
 }
 
-/* Animación shimmer (para el botón de carga) */
+/* Animación shimmer para estados de carga */
 @keyframes shimmer {
     0% {
         transform: translateX(-100%);
@@ -25,11 +35,49 @@
     }
 }
 
+/* Sombra pulsante para tarjetas en estado Limpieza */
+@keyframes glowBlue {
+
+    0%,
+    100% {
+        box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 50px rgba(88, 143, 231, 0.7);
+    }
+}
+
+/* Aumento de tamaño pulsante para tarjetas en estado Limpieza */
+@keyframes pulseScale {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
+}
+
+/* Animacion de color del borde de la tarjeta */
+@keyframes borderPulse {
+    0%,
+    100% {
+        border-color: #fff6d300;
+    }
+
+    50% {
+        border-color: #e7b40a;
+    }
+}
+
+.animate-limpieza-card {
+    animation: glowBlue 1.5s ease-in-out infinite, pulseScale 1.5s ease-in-out infinite, borderPulse 1.5s ease-in-out infinite;
+}
+
 .animate-shimmer {
     animation: shimmer 1.5s infinite linear;
 }
 
-/* Transición suave al cambiar tema */
-* {
-    @apply transition-colors duration-200;
-}
