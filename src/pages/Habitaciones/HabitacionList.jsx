@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
@@ -20,14 +20,7 @@ import {
 import { useSignalR } from '../../hooks/useSignalR';
 import toast from 'react-hot-toast';
 import { consultarDni } from '../../api/verifica_pe';
-
-const estilosCarta = {
-  1: 'bg-success/10 border-success/30 hover:bg-success/20 hover:border-success/50',
-  2: 'bg-warning/10 border-warning/30 hover:bg-warning/20 hover:border-warning/50',
-  3: 'bg-info/10 border-info/30 hover:bg-info/20 hover:border-info/50',
-  4: 'bg-error/10 border-error/30 hover:bg-error/20 hover:border-error/50',
-  5: 'bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20 hover:border-orange-500/50',
-};
+import HabitacionCard from '../../components/ui/HabitacionCard';
 
 const coloresInsignia = {
   1: 'badge-success',
@@ -36,8 +29,6 @@ const coloresInsignia = {
   4: 'badge-error',
   5: 'badge-warning',
 };
-
-const cardAnimation = "animate-[fadeInScale_0.2s_ease-out]";
 
 export default function HabitacionList() {
   const { user } = useAuth();
@@ -68,21 +59,20 @@ export default function HabitacionList() {
   const [editarCantidad, setEditarCantidad] = useState(1);
   const [idEliminando, setIdEliminando] = useState(null);
 
-  // NUEVOS ESTADOS PARA BÚSQUEDA DE CLIENTES
   const [busquedaCliente, setBusquedaCliente] = useState('');
   const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
   const [clienteEncontrado, setClienteEncontrado] = useState(null);
   const [consultandoDniBoton, setConsultandoDniBoton] = useState(false);
   const [guardandoCliente, setGuardandoCliente] = useState(false);
 
+  const [pisoFiltro, setPisoFiltro] = useState('Todos');
+
   const {
     register,
     handleSubmit,
     reset: resetearFormulario,
     formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: zodResolver(habitacionSchema),
-  });
+  } = useForm({ resolver: zodResolver(habitacionSchema) });
 
   const [datosEntrada, setDatosEntrada] = useState({
     tipoDocumento: '1',
@@ -95,6 +85,13 @@ export default function HabitacionList() {
     metodoPago: '005',
     usarClienteAnonimo: false,
   });
+
+  // ------------------------------------------------------------------
+  // EFECTO: limpiar clienteEncontrado si los campos se modifican
+  // ------------------------------------------------------------------
+  useEffect(() => {
+    setClienteEncontrado(null);
+  }, [datosEntrada.documento, datosEntrada.nombres, datosEntrada.apellidos]);
 
   const cargarDatos = async () => {
     try {
@@ -166,9 +163,7 @@ export default function HabitacionList() {
     }
   };
 
-  useEffect(() => {
-    cargarDatos();
-  }, []);
+  useEffect(() => { cargarDatos(); }, []);
 
   useSignalR('EstadoHabitacionCambiado', (data) => {
     toast.success(`Habitacion ${data.numero} ahora esta: ${data.nuevoEstado}`);
@@ -223,31 +218,6 @@ export default function HabitacionList() {
     }
   };
 
-  // GUARDAR CLIENTE
-  const guardarClienteYContinuar = async () => {
-    if (!datosEntrada.documento || !datosEntrada.nombres || !datosEntrada.apellidos) {
-      toast.error('Faltan datos del cliente', { duration: 3000 });
-      return;
-    }
-    setGuardandoCliente(true);
-    try {
-      const res = await api.post('/Cliente', {
-        tipoDocumento: datosEntrada.tipoDocumento,
-        documento: datosEntrada.documento,
-        nombres: datosEntrada.nombres,
-        apellidos: datosEntrada.apellidos,
-        telefono: datosEntrada.telefono || null,
-      });
-      const nuevoCliente = res.data;
-      setClienteEncontrado(nuevoCliente);
-      toast.success('Cliente guardado correctamente', { duration: 3000 });
-    } catch (err) {
-      toast.error('Error al guardar el cliente', { duration: 3000 });
-    } finally {
-      setGuardandoCliente(false);
-    }
-  };
-
   // ACCIONES
   const ejecutarAccion = async (accion) => {
     if (!habitacionSeleccionada) return;
@@ -256,6 +226,7 @@ export default function HabitacionList() {
         if (habitacionSeleccionada.idEstado === 5) {
           await ejecutarEntradaReservaDirecta();
         } else {
+          resetearDatosEntrada();
           setModalAbierto('entrada');
         }
         break;
@@ -335,8 +306,8 @@ export default function HabitacionList() {
         telefono: '',
         metodoPago: '005',
         usarClienteAnonimo: false,
-        guardarCliente: !!clienteEncontrado,
-        idClienteExistente: clienteEncontrado?.idCliente || null,
+        guardarCliente: !!(datosEntrada.usarClienteAnonimo || (!clienteEncontrado && (datosEntrada.documento || datosEntrada.nombres))),
+        idClienteExistente: null,
       });
 
       swal.fire({
@@ -368,7 +339,7 @@ export default function HabitacionList() {
         ...datosEntrada,
         fechaCheckoutPrevista: datosEntrada.fechaSalidaPrevista,
         idReserva: reservaActiva?.extendedProps?.idReserva || null,
-        guardarCliente: !!clienteEncontrado,
+        guardarCliente: !!(datosEntrada.usarClienteAnonimo || (!clienteEncontrado && (datosEntrada.documento || datosEntrada.nombres))),
         idClienteExistente: clienteEncontrado?.idCliente || null,
       };
       const res = await api.post('/Estancia/checkin', payload);
@@ -398,7 +369,7 @@ export default function HabitacionList() {
         fechaSalidaPrevista: datosEntrada.fechaSalidaPrevista,
         metodoPago: datosEntrada.metodoPago,
         usarClienteAnonimo: datosEntrada.usarClienteAnonimo,
-        guardarCliente: !!clienteEncontrado,
+        guardarCliente: !!(datosEntrada.usarClienteAnonimo || (!clienteEncontrado && (datosEntrada.documento || datosEntrada.nombres))),
         idClienteExistente: clienteEncontrado?.idCliente || null,
       };
       const res = await api.post('/Estancia/reserva', payload);
@@ -514,6 +485,34 @@ export default function HabitacionList() {
     }
   };
 
+  const pisosDisponibles = useMemo(() => {
+    const pisos = new Set(habitaciones.map(h => h.piso).filter(Boolean));
+    return ['Todos', ...Array.from(pisos).sort((a, b) => a - b).map(String)];
+  }, [habitaciones]);
+
+  const habitacionesFiltradas = useMemo(() => {
+    if (pisoFiltro === 'Todos') return habitaciones;
+    return habitaciones.filter(h => String(h.piso) === pisoFiltro);
+  }, [habitaciones, pisoFiltro]);
+
+  const resetearDatosEntrada = () => {
+    setDatosEntrada({
+      tipoDocumento: '1',
+      documento: '',
+      nombres: '',
+      apellidos: '',
+      telefono: '',
+      fechaEntradaPrevista: format(new Date(), 'yyyy-MM-dd'),
+      fechaSalidaPrevista: format(new Date(), 'yyyy-MM-dd'),
+      metodoPago: '005',
+      usarClienteAnonimo: false,
+    });
+    setClienteEncontrado(null);
+    setBusquedaCliente('');
+    setResultadosBusqueda([]);
+    setGuardandoCliente(false);
+  };
+
   if (cargando) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -527,48 +526,50 @@ export default function HabitacionList() {
       {/* Cabecera */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold">Habitaciones</h2>
+          <h2 className="text-2xl font-bold text-base-content">Habitaciones</h2>
           <p className="text-sm text-base-content/60 mt-1">Gestioná el estado y las operaciones de las habitaciones</p>
         </div>
-        {esAdmin && (
-          <button className="btn btn-primary gap-2" onClick={abrirModalCrear}>
-            <Plus size={20} /> Nueva Habitación
-          </button>
-        )}
+        <div className="flex gap-2">
+          {esAdmin && (
+            <button className="btn btn-primary gap-2" onClick={abrirModalCrear}>
+              <Plus size={20} /> Nueva Habitación
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Cuadrícula de cartas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {habitaciones.map((h) => (
-          <div
+      {/* Filtros por piso */}
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+        {pisosDisponibles.map(piso => (
+          <button
+            key={piso}
+            onClick={() => setPisoFiltro(piso)}
+            className={`btn btn-sm ${pisoFiltro === piso ? 'btn-primary' : 'btn-ghost'}`}
+          >
+            {piso === 'Todos' ? 'Todos' : `Piso ${piso}`}
+          </button>
+        ))}
+      </div>
+
+      {/* Grid de tarjetas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {habitacionesFiltradas.map(h => (
+          <HabitacionCard
             key={h.idHabitacion}
-            className={`card border-2 ${estilosCarta[h.idEstado] || 'bg-base-200 border-base-300'} shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${cardAnimation} group`}
-            onClick={() => {
-              setHabitacionSeleccionada(h);
+            habitacion={h}
+            onCardClick={(hab) => {
+              setHabitacionSeleccionada(hab);
               setModalAbierto('detalle');
-              cargarReservas(h.idHabitacion);
-              if (h.idEstanciaActiva) {
-                cargarDetalleEstancia(h.idEstanciaActiva);
-                cargarConsumos(h.idEstanciaActiva);
+              cargarReservas(hab.idHabitacion);
+              if (hab.idEstanciaActiva) {
+                cargarDetalleEstancia(hab.idEstanciaActiva);
+                cargarConsumos(hab.idEstanciaActiva);
               } else {
                 setEstanciaActiva(null);
                 setConsumos([]);
               }
             }}
-          >
-            <div className="card-body p-4">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-2xl font-bold text-base-content group-hover:text-primary transition-colors">
-                  {h.numeroHabitacion}
-                </h3>
-                <span className={`badge ${coloresInsignia[h.idEstado] || 'badge-ghost'}`}>{h.nombreEstado}</span>
-              </div>
-              <p className="text-sm mb-1 flex items-center gap-1 text-base-content/80"><Layers size={14} /> {h.nombreTipo}</p>
-              <p className="text-sm mb-1 flex items-center gap-1 text-base-content/80"><Hash size={14} /> Piso: {h.piso ?? '—'}</p>
-              <p className="text-lg font-bold mt-auto flex items-center gap-1 text-base-content"><DollarSign size={16} /> S/ {h.precioNoche.toFixed(2)}</p>
-              {h.clienteHuesped && <p className="text-xs text-base-content/50 mt-1 truncate">{h.clienteHuesped}</p>}
-            </div>
-          </div>
+          />
         ))}
       </div>
 
@@ -1092,10 +1093,10 @@ export default function HabitacionList() {
                   <option value="7">Pasaporte</option>
                 </select>
                 <label className="label mt-2">Número Documento</label>
-                <div className="flex gap-2">
-                  <input className="input input-bordered flex-1" value={datosEntrada.documento} onChange={e => setDatosEntrada({ ...datosEntrada, documento: e.target.value })} />
+                <div>
+                  <input className="input input-bordered w-full mb-2" value={datosEntrada.documento} onChange={e => setDatosEntrada({ ...datosEntrada, documento: e.target.value })} />
                   {datosEntrada.tipoDocumento === '1' && datosEntrada.documento.length === 8 && (
-                    <button type="button" className="btn btn-outline btn-primary" onClick={verificarDni} disabled={consultandoDniBoton}>
+                    <button type="button" className="btn btn-outline btn-primary w-full" onClick={verificarDni} disabled={consultandoDniBoton}>
                       {consultandoDniBoton ? <span className="loading loading-spinner loading-xs"></span> : <CheckCircle size={18} />}
                       Consultar DNI
                     </button>
@@ -1107,16 +1108,6 @@ export default function HabitacionList() {
                 <input className="input input-bordered w-full" value={datosEntrada.apellidos} onChange={e => setDatosEntrada({ ...datosEntrada, apellidos: e.target.value })} />
                 <label className="label mt-2">Teléfono</label>
                 <input className="input input-bordered w-full" value={datosEntrada.telefono} onChange={e => setDatosEntrada({ ...datosEntrada, telefono: e.target.value })} />
-
-                {/* BOTÓN GUARDAR CLIENTE NUEVO */}
-                {!clienteEncontrado && datosEntrada.documento && (
-                  <div className="mt-4">
-                    <button type="button" className="btn btn-secondary w-full gap-2" onClick={guardarClienteYContinuar} disabled={guardandoCliente}>
-                      {guardandoCliente ? <span className="loading loading-spinner loading-xs"></span> : <Save size={18} />}
-                      Guardar Cliente
-                    </button>
-                  </div>
-                )}
               </div>
               <div className={modoEntrada === 'reserva' ? 'md:col-span-2' : ''}>
                 {modoEntrada === 'inmediato' ? (
@@ -1150,7 +1141,7 @@ export default function HabitacionList() {
               </div>
             </div>
             <div className="modal-action">
-              <button className="btn btn-ghost" onClick={() => setModalAbierto(null)}>Cancelar</button>
+              <button className="btn btn-ghost" onClick={() => { resetearDatosEntrada(); setModalAbierto(null); }}>Cancelar</button>
               <LoadingButton type="button" isLoading={cargandoAccion} onClick={modoEntrada === 'inmediato' ? ejecutarEntradaApi : ejecutarReservaApi}>
                 {modoEntrada === 'inmediato' ? 'Confirmar Entrada' : 'Crear Reserva'}
               </LoadingButton>
@@ -1167,7 +1158,7 @@ export default function HabitacionList() {
             <p className="text-base-content/90">Confirmar la salida del cliente <strong>{habitacionSeleccionada.clienteHuesped || 'desconocido'}</strong>?</p>
             <p className="text-sm text-base-content/60 mt-2">La habitación pasará a estado <strong>Limpieza</strong>.</p>
             <div className="modal-action">
-              <button className="btn btn-ghost" onClick={() => setModalAbierto(null)}>Cancelar</button>
+              <button className="btn btn-ghost" onClick={() => { resetearDatosEntrada(); setModalAbierto(null); }}>Cancelar</button>
               <LoadingButton type="button" isLoading={cargandoAccion} onClick={ejecutarSalida} className="btn-success">Confirmar Salida</LoadingButton>
             </div>
           </div>
@@ -1205,7 +1196,7 @@ export default function HabitacionList() {
                 <textarea className="textarea textarea-bordered" {...register('descripcion')}></textarea>
               </div>
               <div className="modal-action">
-                <button type="button" className="btn btn-ghost" onClick={() => setModalAbierto(null)}>Cancelar</button>
+                <button type="button" className="btn btn-ghost" onClick={() => { resetearDatosEntrada(); setModalAbierto(null); }}>Cancelar</button>
                 <LoadingButton type="submit" isLoading={isSubmitting}>
                   {modalAbierto === 'editar' ? 'Actualizar' : 'Crear'}
                 </LoadingButton>
