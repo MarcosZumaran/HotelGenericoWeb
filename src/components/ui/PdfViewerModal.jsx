@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Worker, Viewer } from '@react-pdf-viewer/core';
-import '@react-pdf-viewer/core/lib/styles/index.css';
 import api from '../../api/axios';
+import '@react-pdf-viewer/core/lib/styles/index.css';
+import '@react-pdf-viewer/default-layout/lib/styles/index.css';
 
 export default function PdfViewerModal({ pdfUrl, onClose }) {
     const [blobUrl, setBlobUrl] = useState(null);
