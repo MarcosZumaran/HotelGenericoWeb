@@ -17,10 +17,10 @@ api.interceptors.response.use(
     (error) => {
         if (
             error.response?.status === 401 &&
-            !error.config.url.includes("/Usuario/login") // <-- excluye login
+            !error.config.url.includes("/Usuario/login")
         ) {
-            localStorage.removeItem("token");
-            window.location.href = "/login";
+            // Emitir un evento de logout en lugar de redirigir
+            window.dispatchEvent(new Event('auth:unauthorized'));
         }
         return Promise.reject(error);
     }

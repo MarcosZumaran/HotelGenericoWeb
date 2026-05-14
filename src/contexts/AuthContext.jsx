@@ -43,6 +43,14 @@ export function AuthProvider({ children }) {
         setUser(null);
     };
 
+    useEffect(() => {
+        const handleUnauthorized = () => {
+            logout();
+        };
+        window.addEventListener('auth:unauthorized', handleUnauthorized);
+        return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    }, []);
+
     return (
         <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
             {children}

@@ -66,7 +66,7 @@ export default function Login() {
       });
 
       if (usuario.nombreRol === 'Limpieza') {
-        navigate('/habitaciones');
+        navigate('/limpieza');
       } else {
         navigate('/dashboard');
       }

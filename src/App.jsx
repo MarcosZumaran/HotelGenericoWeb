@@ -13,6 +13,7 @@ import CierreCaja from './pages/Reportes/CierreCaja';
 import VentaList from './pages/Ventas/VentaList';
 import HistorialVentas from './pages/Ventas/HistorialVentas';
 import HistorialEstancias from './pages/Estancias/HistorialEstancias';
+import LimpiezaPanel from './pages/Limpieza/LimpiezaPanel';
 
 function App() {
   return (
@@ -20,21 +21,31 @@ function App() {
       <AuthProvider>
         <Toaster position="top-right" />
         <Routes>
-          <Route path="/login" element={<Login />} />
           <Route element={<ProtectedRoute />}>
-            <Route element={<DashboardLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/habitaciones" element={<HabitacionList />} />
-              <Route path="/clientes" element={<ClienteList />} />
-              <Route path="/productos" element={<ProductoList />} />
-              <Route path="/ventas" element={<VentaList />} />
-              <Route path="/ventas/historial" element={<HistorialVentas />} />
-              <Route path="/estancias/historial" element={<HistorialEstancias />} />
-              <Route path="/comprobantes" element={<ComprobanteList />} />
-              <Route path="/reportes/cierre-caja" element={<CierreCaja />} />
+            {/* Ruta exclusiva para Limpieza y Administrador */}
+            <Route element={<ProtectedRoute allowedRoles={['Recepcion', 'Administrador']} />}>
+              <Route element={<DashboardLayout />}>
+                <Route path="/" element={<Navigate to="/dashboard" />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/habitaciones" element={<HabitacionList />} />
+                <Route path="/clientes" element={<ClienteList />} />
+                <Route path="/productos" element={<ProductoList />} />
+                <Route path="/ventas" element={<VentaList />} />
+                <Route path="/ventas/historial" element={<HistorialVentas />} />
+                <Route path="/estancias/historial" element={<HistorialEstancias />} />
+                <Route path="/comprobantes" element={<ComprobanteList />} />
+                <Route path="/reportes/cierre-caja" element={<CierreCaja />} />
+              </Route>
+            </Route>
+
+            {/* Ruta exclusiva para Limpieza y Administrador */}
+            <Route element={<ProtectedRoute allowedRoles={['Limpieza', 'Administrador']} />}>
+              <Route element={<DashboardLayout />}>
+                <Route path="/" element={<Navigate to="/limpieza" />} />
+                <Route path="/limpieza" element={<LimpiezaPanel />} />
+              </Route>
             </Route>
           </Route>
-          <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
