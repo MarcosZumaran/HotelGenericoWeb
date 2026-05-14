@@ -3,19 +3,18 @@ import useTheme from '../../hooks/useTheme';
 import ConnectionIndicator from '../ui/ConnectionIndicator';
 import { LogOut, Menu, Sun, Moon } from 'lucide-react';
 
-export default function Navbar() {
+export default function Navbar({ onMenuClick }) {
     const { user, logout } = useAuth();
     const { theme, toggleTheme } = useTheme();
 
     return (
-        <header className="navbar bg-base-100 border-b border-base-300 shadow-sm sticky top-0 z-50 h-16">
+        <header className="navbar bg-base-100 border-b border-base-300 shadow-sm sticky top-0 z-40 h-16">
             <div className="flex-1">
-                <label htmlFor="drawer-toggle" className="btn btn-ghost drawer-button lg:hidden">
+                <button className="btn btn-ghost lg:hidden" onClick={onMenuClick}>
                     <Menu size={24} />
-                </label>
+                </button>
             </div>
             <div className="flex-none gap-4 items-center">
-                {/* Toggle de tema con animación */}
                 <button className="btn btn-ghost btn-circle" onClick={toggleTheme}>
                     {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
                 </button>
