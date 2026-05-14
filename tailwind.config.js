@@ -11,7 +11,6 @@ export default {
         sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
       colors: {
-        // Paleta principal (usada en modo claro)
         brand: {
           50: '#eff6ff',
           100: '#dbeafe',
