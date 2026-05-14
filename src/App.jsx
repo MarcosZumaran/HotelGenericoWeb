@@ -21,6 +21,7 @@ function App() {
       <AuthProvider>
         <Toaster position="top-right" />
         <Routes>
+          <Route path="/login" element={<Login />} />
           <Route element={<ProtectedRoute />}>
             {/* Ruta exclusiva para Limpieza y Administrador */}
             <Route element={<ProtectedRoute allowedRoles={['Recepcion', 'Administrador']} />}>

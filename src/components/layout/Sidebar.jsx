@@ -8,8 +8,9 @@ import {
 import api from '../../api/axios';
 
 const menuItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Administrador', 'Recepcionista', 'Limpieza'] },
-    { path: '/habitaciones', label: 'Habitaciones', icon: Bed, roles: ['Administrador', 'Recepcionista', 'Limpieza'] },
+    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Administrador', 'Recepcionista'] },
+    { path: '/habitaciones', label: 'Habitaciones', icon: Bed, roles: ['Administrador', 'Recepcionista'] },
+    { path: '/limpieza', label: 'Limpieza', icon: FileText, roles: ['Administrador', 'Limpieza'] },
     { path: '/clientes', label: 'Clientes', icon: Users, roles: ['Administrador', 'Recepcionista'] },
     { path: '/productos', label: 'Productos', icon: Package, roles: ['Administrador'] },
     { path: '/comprobantes', label: 'Comprobantes', icon: Receipt, roles: ['Administrador'] },
